@@ -50,6 +50,9 @@
     ],
     "src/**/*.css": [
       "prettier --write"
+    ],
+    "**/*.md": [
+      "prettier --write"
     ]
   }
 }

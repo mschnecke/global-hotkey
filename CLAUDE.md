@@ -59,14 +59,14 @@ global-hotkey/
 
 **Current Status**: Core implementation complete (Phases 1-5)
 
-| Phase | Status |
-|-------|--------|
-| 1. Project Scaffolding | Complete |
-| 2. Rust Backend Core | Complete |
-| 3. System Tray Integration | Complete |
-| 4. Svelte Frontend | Complete |
-| 5. Import/Export & Backup | Complete |
+| Phase                         | Status      |
+| ----------------------------- | ----------- |
+| 1. Project Scaffolding        | Complete    |
+| 2. Rust Backend Core          | Complete    |
+| 3. System Tray Integration    | Complete    |
+| 4. Svelte Frontend            | Complete    |
+| 5. Import/Export & Backup     | Complete    |
 | 6. Platform-Specific Features | In Progress |
-| 7. CI/CD & Deployment | Configured |
+| 7. CI/CD & Deployment         | Configured  |
 
 See `docs/implementation-plan.md` for detailed phase descriptions.

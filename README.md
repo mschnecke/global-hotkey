@@ -19,6 +19,7 @@ A cross-platform desktop application for launching programs via configurable glo
 Download the latest `.msi` installer from the [Releases](https://github.com/mschnecke/global-hotkey/releases) page.
 
 Or install via Chocolatey:
+
 ```bash
 choco install global-hotkey
 ```
@@ -28,6 +29,7 @@ choco install global-hotkey
 Download the latest `.dmg` from the [Releases](https://github.com/mschnecke/global-hotkey/releases) page.
 
 Or install via Homebrew:
+
 ```bash
 brew tap mschnecke/global-hotkey
 brew install --cask global-hotkey
@@ -47,6 +49,7 @@ brew install --cask global-hotkey
 ### Configuration Storage
 
 Configurations are stored in:
+
 - **Windows**: `%USERPROFILE%\global-hotkey\config.json`
 - **macOS**: `~/global-hotkey/config.json`
 
@@ -95,14 +98,14 @@ npm run format:check  # Check formatting
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|-------|------------|---------|
-| Framework | [Tauri](https://tauri.app/) | 2.x |
-| Frontend | [Svelte](https://svelte.dev/) | 5.x |
-| Language | TypeScript | 5.x |
-| Styling | [Tailwind CSS](https://tailwindcss.com/) | 3.x |
-| Build | [Vite](https://vitejs.dev/) | 6.x |
-| Backend | Rust | 2021 Edition |
+| Layer     | Technology                               | Version      |
+| --------- | ---------------------------------------- | ------------ |
+| Framework | [Tauri](https://tauri.app/)              | 2.x          |
+| Frontend  | [Svelte](https://svelte.dev/)            | 5.x          |
+| Language  | TypeScript                               | 5.x          |
+| Styling   | [Tailwind CSS](https://tailwindcss.com/) | 3.x          |
+| Build     | [Vite](https://vitejs.dev/)              | 6.x          |
+| Backend   | Rust                                     | 2021 Edition |
 
 ## Project Structure
 
