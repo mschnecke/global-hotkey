@@ -1,1 +1,2 @@
 npx lint-staged
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check || { echo "Rust formatting issues found. Run 'cargo fmt --manifest-path src-tauri/Cargo.toml' to fix."; exit 1; }

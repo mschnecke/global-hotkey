@@ -79,7 +79,10 @@ fn handle_event(event: GlobalHotKeyEvent) {
             // Spawn in a separate thread to avoid blocking the event loop
             std::thread::spawn(move || {
                 if let Err(e) = process::spawner::launch(&program_config) {
-                    eprintln!("Failed to launch program for hotkey '{}': {}", hotkey_name, e);
+                    eprintln!(
+                        "Failed to launch program for hotkey '{}': {}",
+                        hotkey_name, e
+                    );
                 }
             });
             break;
@@ -147,9 +150,9 @@ pub fn unregister_all() -> Result<(), AppError> {
         MANAGER.with(|m| {
             let manager_ref = m.borrow();
             if let Some(manager) = manager_ref.as_ref() {
-                manager
-                    .unregister_all(&hotkeys)
-                    .map_err(|e| AppError::Hotkey(format!("Failed to unregister hotkeys: {}", e)))?;
+                manager.unregister_all(&hotkeys).map_err(|e| {
+                    AppError::Hotkey(format!("Failed to unregister hotkeys: {}", e))
+                })?;
             }
             Ok::<(), AppError>(())
         })?;

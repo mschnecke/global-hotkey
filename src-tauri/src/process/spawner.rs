@@ -54,9 +54,9 @@ pub fn launch(config: &ProgramConfig) -> Result<(), AppError> {
     platform::configure_detached(&mut command);
 
     // Spawn the process (don't wait for it)
-    command
-        .spawn()
-        .map_err(|e| AppError::Process(format!("Failed to launch program '{}': {}", config.path, e)))?;
+    command.spawn().map_err(|e| {
+        AppError::Process(format!("Failed to launch program '{}': {}", config.path, e))
+    })?;
 
     Ok(())
 }

@@ -1,7 +1,7 @@
 //! System tray functionality with dynamic menu
 
-use std::sync::RwLock;
 use once_cell::sync::Lazy;
+use std::sync::RwLock;
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{TrayIcon, TrayIconBuilder},
@@ -57,10 +57,7 @@ fn build_menu(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<Menu<Wry>, Ap
     let import_export_submenu = build_import_export_submenu(app)?;
 
     // Check if autostart is enabled
-    let autostart_enabled = app
-        .autolaunch()
-        .is_enabled()
-        .unwrap_or(false);
+    let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);
 
     // Start with System checkbox
     let autostart_item = CheckMenuItem::with_id(
@@ -69,7 +66,7 @@ fn build_menu(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<Menu<Wry>, Ap
         "Start with System",
         true,
         autostart_enabled,
-        None::<&str>
+        None::<&str>,
     )
     .map_err(|e| AppError::Tray(format!("Failed to create autostart item: {}", e)))?;
 
@@ -94,19 +91,28 @@ fn build_menu(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<Menu<Wry>, Ap
             &sep2,
             &autostart_item,
             &quit_item,
-        ]
+        ],
     )
     .map_err(|e| AppError::Tray(format!("Failed to create menu: {}", e)))
 }
 
 /// Build the hotkeys submenu
-fn build_hotkeys_submenu(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<Submenu<Wry>, AppError> {
+fn build_hotkeys_submenu(
+    app: &AppHandle,
+    hotkeys: &[HotkeyConfig],
+) -> Result<Submenu<Wry>, AppError> {
     let enabled_hotkeys: Vec<&HotkeyConfig> = hotkeys.iter().filter(|h| h.enabled).collect();
 
     if enabled_hotkeys.is_empty() {
         // Show placeholder when no hotkeys configured
-        let no_hotkeys = MenuItem::with_id(app, "no_hotkeys", "(No hotkeys configured)", false, None::<&str>)
-            .map_err(|e| AppError::Tray(format!("Failed to create no_hotkeys item: {}", e)))?;
+        let no_hotkeys = MenuItem::with_id(
+            app,
+            "no_hotkeys",
+            "(No hotkeys configured)",
+            false,
+            None::<&str>,
+        )
+        .map_err(|e| AppError::Tray(format!("Failed to create no_hotkeys item: {}", e)))?;
 
         Submenu::with_items(app, "Hotkeys", true, &[&no_hotkeys])
             .map_err(|e| AppError::Tray(format!("Failed to create hotkeys submenu: {}", e)))
@@ -115,7 +121,11 @@ fn build_hotkeys_submenu(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<Su
         let mut items: Vec<MenuItem<Wry>> = Vec::new();
 
         for hk in enabled_hotkeys {
-            let label = format!("{} ({})", hk.name, hotkey::manager::format_hotkey(&hk.hotkey));
+            let label = format!(
+                "{} ({})",
+                hk.name,
+                hotkey::manager::format_hotkey(&hk.hotkey)
+            );
             let item_id = format!("hotkey_{}", hk.id);
 
             let item = MenuItem::with_id(app, &item_id, &label, true, None::<&str>)
@@ -137,11 +147,13 @@ fn build_hotkeys_submenu(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<Su
 
 /// Build the Import/Export submenu
 fn build_import_export_submenu(app: &AppHandle) -> Result<Submenu<Wry>, AppError> {
-    let export_item = MenuItem::with_id(app, "export", "Export Configuration...", true, None::<&str>)
-        .map_err(|e| AppError::Tray(format!("Failed to create export item: {}", e)))?;
+    let export_item =
+        MenuItem::with_id(app, "export", "Export Configuration...", true, None::<&str>)
+            .map_err(|e| AppError::Tray(format!("Failed to create export item: {}", e)))?;
 
-    let import_item = MenuItem::with_id(app, "import", "Import Configuration...", true, None::<&str>)
-        .map_err(|e| AppError::Tray(format!("Failed to create import item: {}", e)))?;
+    let import_item =
+        MenuItem::with_id(app, "import", "Import Configuration...", true, None::<&str>)
+            .map_err(|e| AppError::Tray(format!("Failed to create import item: {}", e)))?;
 
     Submenu::with_items(app, "Import/Export", true, &[&export_item, &import_item])
         .map_err(|e| AppError::Tray(format!("Failed to create import/export submenu: {}", e)))
@@ -206,7 +218,10 @@ fn execute_hotkey_program(id: &str) {
 
         std::thread::spawn(move || {
             if let Err(e) = crate::process::spawner::launch(&program_config) {
-                eprintln!("Failed to launch program for hotkey '{}': {}", hotkey_name, e);
+                eprintln!(
+                    "Failed to launch program for hotkey '{}': {}",
+                    hotkey_name, e
+                );
             }
         });
     } else {
@@ -218,7 +233,10 @@ fn execute_hotkey_program(id: &str) {
 
                 std::thread::spawn(move || {
                     if let Err(e) = crate::process::spawner::launch(&program_config) {
-                        eprintln!("Failed to launch program for hotkey '{}': {}", hotkey_name, e);
+                        eprintln!(
+                            "Failed to launch program for hotkey '{}': {}",
+                            hotkey_name, e
+                        );
                     }
                 });
             }

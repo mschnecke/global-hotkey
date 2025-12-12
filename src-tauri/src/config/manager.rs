@@ -10,7 +10,8 @@ use super::validation;
 
 /// Get the configuration directory path
 fn get_config_dir() -> Result<PathBuf, AppError> {
-    let home = dirs::home_dir().ok_or_else(|| AppError::Config("Cannot find home directory".into()))?;
+    let home =
+        dirs::home_dir().ok_or_else(|| AppError::Config("Cannot find home directory".into()))?;
     Ok(home.join("global-hotkey"))
 }
 
