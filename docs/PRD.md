@@ -290,7 +290,144 @@ All files are stored relative to `~/global-hotkey/`:
 - Support `.app` bundles and Unix executables
 - Hidden mode uses background process launching
 
-## 10. Future Considerations (Out of Scope for v1.0)
+## 10. GitHub Workflows
+
+### 10.1 CI Workflow (ci.yml)
+
+**Triggers:**
+- Push to `main` or `develop` branches
+- Pull requests targeting `main`
+
+**Jobs:**
+
+| Job | Runner | Steps |
+|-----|--------|-------|
+| lint-and-test | Ubuntu | Install deps → Lint → Format check → Run tests |
+| build | macOS + Windows (parallel) | Install deps → Install Rust → Build frontend → Build Tauri app |
+
+**Requirements:**
+- Lint must pass before build starts
+- Build generates platform-specific artifacts (not published)
+- Use `fail-fast: false` for parallel builds
+
+### 10.2 Release Workflow (release.yml)
+
+**Triggers:**
+- Push to tags matching `v*` pattern
+- Manual dispatch with version bump options (patch, minor, major)
+
+**Jobs:**
+
+| Job | Description |
+|-----|-------------|
+| bump-version | Calculate new version, update config files, create git tag |
+| create-release | Create GitHub draft release with installation instructions |
+| build-tauri | Build platform installers (parallel: macOS + Windows) |
+| publish-release | Transition release from draft to published |
+| update-homebrew | Trigger homebrew tap repository update with new version/checksums |
+| update-chocolatey | Compute SHA256 checksums, update nuspec, publish to repository |
+
+**Version Files to Update:**
+- `package.json` / `package-lock.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/tauri.conf.json`
+
+**Build Artifacts:**
+
+| Platform | Artifacts |
+|----------|-----------|
+| macOS | `.app` bundle, `.pkg` installer |
+| Windows | `.msi` installer |
+
+**Release Notes Template:**
+- Version number and release date
+- Installation instructions per platform
+- Changelog summary
+
+### 10.3 Git Hooks (Husky)
+
+**Dependencies:**
+- `husky`: ^9.x - Git hooks manager
+- `lint-staged`: ^16.x - Run linters on staged files
+
+**Setup:**
+- `prepare` script in package.json: `"prepare": "husky"`
+- Automatically installs hooks on `npm install`
+
+**Pre-commit Hook** (`.husky/pre-commit`):
+```bash
+npx lint-staged
+```
+
+**lint-staged Configuration** (in package.json):
+```json
+{
+  "lint-staged": {
+    "src/**/*.{ts,svelte}": ["prettier --write", "eslint --fix --max-warnings 0"],
+    "src/**/*.css": ["prettier --write"]
+  }
+}
+```
+
+**Workflow:**
+1. Developer stages files with `git add`
+2. On `git commit`, Husky triggers pre-commit hook
+3. lint-staged runs Prettier and ESLint only on staged files
+4. If linting fails, commit is aborted
+5. If linting passes (with auto-fixes applied), commit proceeds
+
+## 11. Software Deployment
+
+### 11.1 Chocolatey (Windows)
+
+**Package Structure** (in `packages/chocolatey/`):
+
+| File/Directory | Purpose |
+|----------------|---------|
+| `global-hotkey.nuspec` | Package manifest with metadata, version, dependencies |
+| `icons/` | Package branding icons for Chocolatey repository |
+| `tools/chocolateyinstall.ps1` | PowerShell installation script |
+| `tools/chocolateyuninstall.ps1` | PowerShell uninstallation script |
+
+**Installation:**
+```
+choco install global-hotkey
+```
+
+**Publishing:**
+- Automated via release workflow
+- Compute SHA256 checksum of `.msi` installer
+- Update version and checksum in `.nuspec`
+- Publish to Chocolatey community repository
+
+### 11.2 Homebrew (macOS)
+
+**Tap Repository:** `homebrew-global-hotkey` (separate repository)
+
+**Structure:**
+
+| File/Directory | Purpose |
+|----------------|---------|
+| `Casks/global-hotkey.rb` | Cask definition with version, checksums, install instructions |
+| `.github/workflows/` | Automated update workflow |
+
+**Cask Features:**
+- Apple Silicon only (`aarch64.pkg`)
+- Automatic checksum verification
+- Installs to `/Applications`
+
+**Installation:**
+```
+brew tap mschnecke/global-hotkey
+brew install --cask global-hotkey
+```
+
+**Automated Updates:**
+- Release workflow triggers tap repository update
+- Updates version number and SHA256 checksums in cask file
+- Commits and pushes changes automatically
+
+## 12. Future Considerations (Out of Scope for v1.0)
 
 - Categories/folders for organizing hotkeys
 - Hotkey sequences (chord combinations)
@@ -300,7 +437,7 @@ All files are stored relative to `~/global-hotkey/`:
 - Multiple configuration profiles
 - Spotlight-style search launcher
 
-## 11. Success Metrics
+## 13. Success Metrics
 
 | Metric | Target |
 |--------|--------|
@@ -309,8 +446,12 @@ All files are stored relative to `~/global-hotkey/`:
 | Application crash rate | < 0.1% |
 | Memory usage (idle) | < 50MB |
 
-## 12. Revision History
+## 14. Revision History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2024-12-12 | - | Initial PRD |
+| 1.1 | 2024-12-12 | - | Added GitHub CI and Release workflows |
+| 1.2 | 2024-12-12 | - | Added Software Deployment (Chocolatey, Homebrew) |
+| 1.3 | 2024-12-12 | - | Removed Apple Intel support (Apple Silicon only) |
+| 1.4 | 2024-12-12 | - | Added Git Hooks (Husky + lint-staged) |
