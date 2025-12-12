@@ -109,10 +109,10 @@ tauri = { version = "2", features = ["tray-icon"] }
 
 ### Icon Requirements
 
-| Platform | Size | Format |
-|----------|------|--------|
-| Windows | 32x32, 64x64 | .ico |
-| macOS | 22x22, 44x44 | .png (template) |
+| Platform | Size         | Format          |
+| -------- | ------------ | --------------- |
+| Windows  | 32x32, 64x64 | .ico            |
+| macOS    | 22x22, 44x44 | .png (template) |
 
 ## Examples
 
@@ -121,6 +121,7 @@ tauri = { version = "2", features = ["tray-icon"] }
 **Prompt**: "Set up a basic system tray with Settings and Quit options"
 
 **Output**:
+
 ```rust
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -163,6 +164,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), tauri::Error> {
 **Prompt**: "Create a submenu that lists all configured hotkeys"
 
 **Output**:
+
 ```rust
 use tauri::menu::{Menu, MenuItem, Submenu};
 
@@ -194,6 +196,7 @@ pub fn build_hotkeys_submenu(
 **Prompt**: "Implement Start with System toggle in tray menu"
 
 **Output**:
+
 ```rust
 use tauri::menu::CheckMenuItem;
 

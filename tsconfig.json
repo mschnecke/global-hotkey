@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "$lib/*": ["src/lib/*"],
+      "$components/*": ["src/components/*"],
+      "$stores/*": ["src/stores/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.svelte"]
+}

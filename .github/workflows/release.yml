@@ -1,0 +1,172 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Global Hotkey v${{ steps.get_version.outputs.version }}
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+
+  build-tauri:
+    name: Build (${{ matrix.name }})
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: msi,nsis
+          - name: macOS Intel
+            os: macos-latest
+            target: x86_64-apple-darwin
+            bundles: dmg
+          - name: macOS Apple Silicon
+            os: macos-latest
+            target: aarch64-apple-darwin
+            bundles: dmg
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and upload release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+
+  publish-release:
+    name: Publish Release
+    needs: [create-release, build-tauri]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          draft: false
+
+  update-homebrew:
+    name: Update Homebrew Tap
+    needs: [create-release, publish-release]
+    runs-on: ubuntu-latest
+    if: ${{ !contains(needs.create-release.outputs.version, '-') }}
+    steps:
+      - name: Update Homebrew formula
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          repository: ${{ github.repository_owner }}/homebrew-global-hotkey
+          event-type: update-formula
+          client-payload: |
+            {
+              "version": "${{ needs.create-release.outputs.version }}",
+              "repo": "${{ github.repository }}"
+            }
+        continue-on-error: true
+
+  update-chocolatey:
+    name: Update Chocolatey Package
+    needs: [create-release, publish-release]
+    runs-on: windows-latest
+    if: ${{ !contains(needs.create-release.outputs.version, '-') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download MSI
+        run: |
+          $version = "${{ needs.create-release.outputs.version }}"
+          $url = "https://github.com/${{ github.repository }}/releases/download/v${version}/Global.Hotkey_${version}_x64_en-US.msi"
+          Invoke-WebRequest -Uri $url -OutFile "global-hotkey.msi"
+          $hash = (Get-FileHash -Path "global-hotkey.msi" -Algorithm SHA256).Hash
+          echo "MSI_HASH=$hash" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Update Chocolatey files
+        run: |
+          $version = "${{ needs.create-release.outputs.version }}"
+
+          # Update nuspec
+          $nuspec = Get-Content "packages/chocolatey/global-hotkey.nuspec" -Raw
+          $nuspec = $nuspec -replace '<version>.*</version>', "<version>$version</version>"
+          Set-Content "packages/chocolatey/global-hotkey.nuspec" $nuspec
+
+          # Update install script
+          $install = Get-Content "packages/chocolatey/tools/chocolateyinstall.ps1" -Raw
+          $install = $install -replace "checksum\s*=\s*'[^']*'", "checksum = '$env:MSI_HASH'"
+          $install = $install -replace '/v[0-9]+\.[0-9]+\.[0-9]+/', "/v$version/"
+          Set-Content "packages/chocolatey/tools/chocolateyinstall.ps1" $install
+        shell: pwsh
+
+      - name: Pack and push to Chocolatey
+        run: |
+          cd packages/chocolatey
+          choco pack
+          choco push global-hotkey.${{ needs.create-release.outputs.version }}.nupkg --source https://push.chocolatey.org/ --api-key ${{ secrets.CHOCOLATEY_API_KEY }}
+        shell: pwsh
+        continue-on-error: true

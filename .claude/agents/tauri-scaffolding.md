@@ -82,11 +82,13 @@ Files are created in the project root directory and its subdirectories as shown 
 ### Node.js Dependencies
 
 **Production**:
+
 - `@tauri-apps/api`: ^2.0.0
 - `@tauri-apps/plugin-dialog`: ^2.0.0
 - `@tauri-apps/plugin-shell`: ^2.0.0
 
 **Development**:
+
 - `svelte`: ^5.0.0
 - `typescript`: ^5.0.0
 - `vite`: ^6.0.0
@@ -119,6 +121,7 @@ serde_json = "1"
 **Prompt**: "Set up a new Tauri project for the Global Hotkey application"
 
 **Actions**:
+
 1. Create `package.json` with all dependencies
 2. Create Vite, Svelte, TypeScript, and Tailwind configs
 3. Create initial Svelte app structure
@@ -132,6 +135,7 @@ serde_json = "1"
 **Prompt**: "Add Tailwind CSS to this Tauri project"
 
 **Actions**:
+
 1. Install tailwindcss, postcss, autoprefixer
 2. Create `tailwind.config.js` with Svelte content paths
 3. Create `postcss.config.js`

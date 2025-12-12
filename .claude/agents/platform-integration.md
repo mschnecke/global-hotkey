@@ -101,6 +101,7 @@ objc = "0.2"
 **Prompt**: "Implement auto-start using Windows Registry"
 
 **Output**:
+
 ```rust
 // src-tauri/src/platform/windows.rs
 use windows::core::PCWSTR;
@@ -154,6 +155,7 @@ fn to_wide(s: &str) -> Vec<u16> {
 **Prompt**: "Implement auto-start using LaunchAgent"
 
 **Output**:
+
 ```rust
 // src-tauri/src/platform/macos.rs
 use std::fs;
@@ -205,6 +207,7 @@ pub fn set_autostart(enabled: bool, app_path: &str) -> Result<(), String> {
 **Prompt**: "Launch a CLI program without showing a window"
 
 **Output**:
+
 ```rust
 // src-tauri/src/platform/windows.rs
 use std::process::Command;
@@ -263,6 +266,7 @@ pub fn launch_hidden(
 **Prompt**: "Check and request Accessibility permissions on macOS"
 
 **Output**:
+
 ```rust
 // src-tauri/src/platform/macos.rs
 use cocoa::base::nil;

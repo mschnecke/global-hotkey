@@ -117,6 +117,7 @@ jobs:
 ### Version Files
 
 Files to update during release:
+
 - `package.json` - `version` field
 - `package-lock.json` - `version` field
 - `src-tauri/Cargo.toml` - `version` field
@@ -129,6 +130,7 @@ Files to update during release:
 **Prompt**: "Create a CI workflow that lints code and builds for Windows and macOS"
 
 **Output**:
+
 ```yaml
 name: CI
 
@@ -199,6 +201,7 @@ jobs:
 **Prompt**: "Create a release workflow that bumps version and publishes"
 
 **Output**:
+
 ```yaml
 name: Release
 
@@ -263,6 +266,7 @@ jobs:
 **Prompt**: "Create Chocolatey package structure"
 
 **Output**:
+
 ```xml
 <!-- packages/chocolatey/global-hotkey.nuspec -->
 <?xml version="1.0" encoding="utf-8"?>

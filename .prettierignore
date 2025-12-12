@@ -1,0 +1,8 @@
+dist/
+src-tauri/target/
+src-tauri/gen/
+node_modules/
+.svelte-kit/
+build/
+package-lock.json
+pnpm-lock.yaml

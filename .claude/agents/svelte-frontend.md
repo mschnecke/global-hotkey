@@ -121,7 +121,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type { HotkeyConfig } from '$lib/types';
 
 export const hotkeys = writable<HotkeyConfig[]>([]);
-export const enabledHotkeys = derived(hotkeys, $h => $h.filter(h => h.enabled));
+export const enabledHotkeys = derived(hotkeys, ($h) => $h.filter((h) => h.enabled));
 
 export async function loadHotkeys() {
   const config = await invoke<{ hotkeys: HotkeyConfig[] }>('get_config');
@@ -152,6 +152,7 @@ export async function saveConfig(config: AppConfig): Promise<void> {
 **Prompt**: "Create a table component to display configured hotkeys"
 
 **Output**:
+
 ```svelte
 <script lang="ts">
   import { hotkeys } from '../stores/hotkeys';
@@ -201,6 +202,7 @@ export async function saveConfig(config: AppConfig): Promise<void> {
 **Prompt**: "Create a component that captures keyboard shortcuts"
 
 **Output**:
+
 ```svelte
 <script lang="ts">
   interface Props {
@@ -231,7 +233,7 @@ export async function saveConfig(config: AppConfig): Promise<void> {
 
 <button
   class="px-4 py-2 border rounded {recording ? 'ring-2 ring-blue-500' : ''}"
-  onclick={() => recording = true}
+  onclick={() => (recording = true)}
   onkeydown={handleKeyDown}
 >
   {#if recording}

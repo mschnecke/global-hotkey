@@ -1,0 +1,41 @@
+[package]
+name = "global-hotkey"
+version = "0.1.0"
+description = "Cross-platform keystroke-summoned program launcher"
+authors = ["Global Hotkey Team"]
+edition = "2021"
+
+[lib]
+name = "global_hotkey_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+global-hotkey = "0.6"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5"
+thiserror = "2"
+once_cell = "1.20"
+which = "7"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_System_Threading", "Win32_Foundation"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

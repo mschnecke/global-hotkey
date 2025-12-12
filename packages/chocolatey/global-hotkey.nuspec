@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>global-hotkey</id>
+    <version>0.1.0</version>
+    <title>Global Hotkey</title>
+    <authors>Global Hotkey Team</authors>
+    <owners>mschnecke</owners>
+    <projectUrl>https://github.com/mschnecke/global-hotkey</projectUrl>
+    <licenseUrl>https://github.com/mschnecke/global-hotkey/blob/main/LICENSE</licenseUrl>
+    <iconUrl>https://raw.githubusercontent.com/mschnecke/global-hotkey/main/src-tauri/icons/icon.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+Global Hotkey is a cross-platform application for launching programs via configurable keyboard shortcuts.
+
+Features:
+- Configure custom keyboard shortcuts to launch any program
+- System tray integration with quick access menu
+- Import/export configuration for backup and portability
+- Auto-start with system option
+- Support for hidden/background program launch
+    </description>
+    <summary>Launch programs with global keyboard shortcuts</summary>
+    <releaseNotes>https://github.com/mschnecke/global-hotkey/releases</releaseNotes>
+    <copyright>Copyright 2024 Global Hotkey Team</copyright>
+    <tags>hotkey keyboard shortcut launcher productivity automation</tags>
+    <packageSourceUrl>https://github.com/mschnecke/global-hotkey/tree/main/packages/chocolatey</packageSourceUrl>
+    <docsUrl>https://github.com/mschnecke/global-hotkey#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/mschnecke/global-hotkey/issues</bugTrackerUrl>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

@@ -121,6 +121,7 @@ pub use process::*;
 **Prompt**: "Implement the configuration manager for storing hotkey settings"
 
 **Output**:
+
 ```rust
 // src-tauri/src/config/types.rs
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,6 +147,7 @@ pub async fn get_config() -> Result<AppConfig, String> {
 **Prompt**: "Create a process spawner that can launch programs in hidden mode"
 
 **Output**:
+
 ```rust
 #[command]
 pub async fn launch_program(config: ProgramConfig) -> Result<(), String> {

@@ -42,6 +42,7 @@ global-hotkey/
 **Purpose:** Initialize and configure Tauri 2.x projects with Svelte, TypeScript, and Tailwind CSS.
 
 **When to use:**
+
 - Setting up a new Tauri desktop application from scratch
 - Adding Tauri to an existing project
 - Configuring development tooling (ESLint, Prettier, Husky)
@@ -59,6 +60,7 @@ global-hotkey/
 **Purpose:** Implement Rust backend modules for Tauri including configuration management, hotkey handling, and process spawning.
 
 **When to use:**
+
 - Implementing Tauri commands
 - Creating data structures for configuration
 - Writing file system operations
@@ -76,6 +78,7 @@ global-hotkey/
 **Purpose:** Build Svelte 5 components with TypeScript and Tailwind CSS for the settings UI.
 
 **When to use:**
+
 - Creating new Svelte components
 - Implementing forms, dialogs, and interactive UI
 - Setting up Svelte stores for state management
@@ -93,6 +96,7 @@ global-hotkey/
 **Purpose:** Configure and implement system tray functionality including icons, menus, and background operation.
 
 **When to use:**
+
 - Setting up system tray icon
 - Creating and updating tray context menus
 - Implementing menu item click handlers
@@ -110,6 +114,7 @@ global-hotkey/
 **Purpose:** Configure GitHub Actions workflows, Git hooks, and deployment pipelines.
 
 **When to use:**
+
 - Setting up GitHub Actions CI workflow
 - Creating release automation
 - Configuring Husky and lint-staged
@@ -127,6 +132,7 @@ global-hotkey/
 **Purpose:** Implement Windows and macOS specific functionality.
 
 **When to use:**
+
 - Implementing Windows-specific features (Registry, Windows API)
 - Implementing macOS-specific features (Accessibility, LaunchAgents)
 - Handling platform permission requirements
@@ -141,37 +147,37 @@ global-hotkey/
 
 ## Routing Table
 
-| User Request | Agent |
-|--------------|-------|
-| "Set up the project" | tauri-scaffolding |
-| "Initialize Tauri" | tauri-scaffolding |
-| "Add Tailwind" | tauri-scaffolding |
-| "Configure ESLint/Prettier" | tauri-scaffolding |
-| "Set up Husky" | tauri-scaffolding |
-| "Implement config loading/saving" | rust-backend |
-| "Create Tauri command" | rust-backend |
-| "Add Rust dependency" | rust-backend |
-| "Implement hotkey registration" | rust-backend |
-| "Launch programs from backend" | rust-backend |
-| "Create a component" | svelte-frontend |
-| "Build the settings UI" | svelte-frontend |
-| "Add a Svelte store" | svelte-frontend |
-| "Implement hotkey recorder" | svelte-frontend |
-| "Create dialog/modal" | svelte-frontend |
-| "Set up system tray" | system-tray |
-| "Add tray menu item" | system-tray |
-| "Run in background" | system-tray |
-| "Minimize to tray" | system-tray |
-| "Set up CI/CD" | ci-cd-setup |
-| "Create GitHub Action" | ci-cd-setup |
-| "Configure release workflow" | ci-cd-setup |
-| "Set up Chocolatey" | ci-cd-setup |
-| "Create Homebrew cask" | ci-cd-setup |
-| "Windows Registry" | platform-integration |
-| "macOS permissions" | platform-integration |
-| "Auto-start on boot" | platform-integration |
-| "Hidden window launch" | platform-integration |
-| "Platform-specific code" | platform-integration |
+| User Request                      | Agent                |
+| --------------------------------- | -------------------- |
+| "Set up the project"              | tauri-scaffolding    |
+| "Initialize Tauri"                | tauri-scaffolding    |
+| "Add Tailwind"                    | tauri-scaffolding    |
+| "Configure ESLint/Prettier"       | tauri-scaffolding    |
+| "Set up Husky"                    | tauri-scaffolding    |
+| "Implement config loading/saving" | rust-backend         |
+| "Create Tauri command"            | rust-backend         |
+| "Add Rust dependency"             | rust-backend         |
+| "Implement hotkey registration"   | rust-backend         |
+| "Launch programs from backend"    | rust-backend         |
+| "Create a component"              | svelte-frontend      |
+| "Build the settings UI"           | svelte-frontend      |
+| "Add a Svelte store"              | svelte-frontend      |
+| "Implement hotkey recorder"       | svelte-frontend      |
+| "Create dialog/modal"             | svelte-frontend      |
+| "Set up system tray"              | system-tray          |
+| "Add tray menu item"              | system-tray          |
+| "Run in background"               | system-tray          |
+| "Minimize to tray"                | system-tray          |
+| "Set up CI/CD"                    | ci-cd-setup          |
+| "Create GitHub Action"            | ci-cd-setup          |
+| "Configure release workflow"      | ci-cd-setup          |
+| "Set up Chocolatey"               | ci-cd-setup          |
+| "Create Homebrew cask"            | ci-cd-setup          |
+| "Windows Registry"                | platform-integration |
+| "macOS permissions"               | platform-integration |
+| "Auto-start on boot"              | platform-integration |
+| "Hidden window launch"            | platform-integration |
+| "Platform-specific code"          | platform-integration |
 
 ---
 
@@ -193,12 +199,14 @@ global-hotkey/
 ### Parallel Workflow (After Foundation)
 
 Once scaffolding is complete, these can often work in parallel:
+
 - `rust-backend` + `svelte-frontend` (backend and frontend development)
 - `system-tray` + `platform-integration` (system integrations)
 
 ### Feature Workflow
 
 For adding a new feature end-to-end:
+
 ```
 rust-backend → svelte-frontend → (system-tray if tray-related)
 ```
@@ -207,25 +215,27 @@ rust-backend → svelte-frontend → (system-tray if tray-related)
 
 ## File Naming Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Rust modules | snake_case | `config_manager.rs` |
-| Svelte components | PascalCase | `HotkeyList.svelte` |
-| TypeScript | camelCase files | `commands.ts` |
-| Stores | camelCase | `hotkeys.ts` |
-| Config files | lowercase with dots | `tailwind.config.js` |
-| GitHub workflows | kebab-case | `ci.yml`, `release.yml` |
+| Type              | Convention          | Example                 |
+| ----------------- | ------------------- | ----------------------- |
+| Rust modules      | snake_case          | `config_manager.rs`     |
+| Svelte components | PascalCase          | `HotkeyList.svelte`     |
+| TypeScript        | camelCase files     | `commands.ts`           |
+| Stores            | camelCase           | `hotkeys.ts`            |
+| Config files      | lowercase with dots | `tailwind.config.js`    |
+| GitHub workflows  | kebab-case          | `ci.yml`, `release.yml` |
 
 ---
 
 ## Git Commit Protocol
 
 **When to commit:**
+
 - After completing a logical unit of work
 - After each implementation phase
 - Before switching between agents
 
 **Commit message format:**
+
 ```
 type(scope): description
 
