@@ -13,9 +13,12 @@ use crate::config::schema::{HotkeyBinding, HotkeyConfig};
 use crate::error::AppError;
 use crate::process;
 
+/// Registry entry containing hotkey ID, HotKey object, and configuration
+type RegistryEntry = (u32, HotKey, HotkeyConfig);
+
 /// Registry mapping hotkey IDs to their configurations and HotKey objects
 /// We store the hotkey ID (u32) instead of the HotKey object because HotKey doesn't implement Clone
-pub static REGISTRY: Lazy<RwLock<HashMap<String, (u32, HotKey, HotkeyConfig)>>> =
+pub static REGISTRY: Lazy<RwLock<HashMap<String, RegistryEntry>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
 // Thread-local hotkey manager - must be used on the main thread only
@@ -142,6 +145,7 @@ pub fn unregister(id: &str) -> Result<(), AppError> {
 }
 
 /// Unregister all hotkeys - must be called from the main thread
+#[allow(dead_code)]
 pub fn unregister_all() -> Result<(), AppError> {
     let mut registry = REGISTRY.write().unwrap();
     let hotkeys: Vec<HotKey> = registry.values().map(|(_, h, _)| *h).collect();
@@ -169,6 +173,7 @@ pub fn get_registered_ids() -> Vec<String> {
 }
 
 /// Check if a hotkey ID is registered
+#[allow(dead_code)]
 pub fn is_registered(id: &str) -> bool {
     let registry = REGISTRY.read().unwrap();
     registry.contains_key(id)

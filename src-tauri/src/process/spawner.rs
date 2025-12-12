@@ -78,6 +78,7 @@ pub fn get_executable_extensions() -> Vec<&'static str> {
 }
 
 /// Resolve a program name to its full path (searches PATH)
+#[allow(dead_code)]
 pub fn resolve_program(name: &str) -> Option<String> {
     // First check if it's already a valid path
     if validate_path(name) {

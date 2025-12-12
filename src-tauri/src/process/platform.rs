@@ -172,6 +172,7 @@ pub fn is_app_bundle(path: &Path) -> bool {
 }
 
 #[cfg(not(target_os = "macos"))]
+#[allow(dead_code)]
 pub fn is_app_bundle(_path: &Path) -> bool {
     false
 }

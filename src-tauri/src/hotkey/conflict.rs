@@ -118,6 +118,7 @@ pub fn conflicts_with_system(binding: &HotkeyBinding) -> bool {
 }
 
 /// Get a list of system hotkeys for display
+#[allow(dead_code)]
 pub fn get_system_hotkeys_list() -> Vec<String> {
     SYSTEM_HOTKEYS
         .iter()
