@@ -155,6 +155,7 @@ pub fn executable_extensions() -> Vec<&'static str> {
 
 /// Launch a .app bundle on macOS using the `open` command
 #[cfg(target_os = "macos")]
+#[allow(dead_code)]
 pub fn launch_app_bundle(path: &Path, hidden: bool) -> std::io::Result<std::process::Child> {
     let mut command = Command::new("open");
 
@@ -167,6 +168,7 @@ pub fn launch_app_bundle(path: &Path, hidden: bool) -> std::io::Result<std::proc
 
 /// Check if a path points to a macOS .app bundle
 #[cfg(target_os = "macos")]
+#[allow(dead_code)]
 pub fn is_app_bundle(path: &Path) -> bool {
     path.extension().map_or(false, |ext| ext == "app") && path.is_dir()
 }
