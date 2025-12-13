@@ -136,15 +136,11 @@ jobs:
           - name: Windows x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            bundles: msi,nsis
-          - name: macOS Intel
-            os: macos-latest
-            target: x86_64-apple-darwin
-            bundles: dmg
+            bundles: msi
           - name: macOS Apple Silicon
             os: macos-latest
             target: aarch64-apple-darwin
-            bundles: dmg
+            bundles: pkg
 
     runs-on: ${{ matrix.os }}
     steps:
