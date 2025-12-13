@@ -44,7 +44,7 @@ mkdir -p "$PKG_ROOT/Applications"
 cp -R "$APP_PATH" "$PKG_ROOT/Applications/"
 
 # Build the component package
-COMPONENT_PKG="$OUTPUT_DIR/Global.Hotkey_${VERSION}_${ARCH}_component.pkg"
+COMPONENT_PKG="$OUTPUT_DIR/Global Hotkey_${VERSION}_${ARCH}_component.pkg"
 pkgbuild \
     --root "$PKG_ROOT" \
     --identifier "$BUNDLE_ID" \
@@ -54,7 +54,7 @@ pkgbuild \
     "$COMPONENT_PKG"
 
 # Build the final distribution package (product archive)
-FINAL_PKG="$OUTPUT_DIR/Global.Hotkey_${VERSION}_${ARCH}.pkg"
+FINAL_PKG="$OUTPUT_DIR/Global Hotkey_${VERSION}_${ARCH}.pkg"
 productbuild \
     --package "$COMPONENT_PKG" \
     --identifier "${BUNDLE_ID}.installer" \
