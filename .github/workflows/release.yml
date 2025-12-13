@@ -135,7 +135,7 @@ jobs:
 
             **Windows (Chocolatey):**
             ```powershell
-            choco source add -n="github-global-hotkey" -s="https://www.myget.org/F/mschnecke/api/v3/index.json"
+            choco source add -n="global-hotkey" -s="https://www.myget.org/F/mschnecke/api/v3/index.json"
             choco install global-hotkey
             ```
 
