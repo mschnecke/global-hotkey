@@ -2,7 +2,7 @@
 # packages/macos/postinstall
 # Runs after the .pkg installation completes
 
-APP_PATH="/Applications/Global Hotkey.app"
+APP_PATH="/Applications/GlobalHotkey.app"
 
 # Remove quarantine attribute (allows app to run without Gatekeeper warning)
 if [ -d "$APP_PATH" ]; then
@@ -10,9 +10,9 @@ if [ -d "$APP_PATH" ]; then
 fi
 
 # Notify user about Accessibility permissions
-osascript -e 'display notification "Please grant Accessibility permissions in System Settings > Privacy & Security > Accessibility" with title "Global Hotkey Installed" subtitle "One more step needed"' 2>/dev/null || true
+osascript -e 'display notification "Please grant Accessibility permissions in System Settings > Privacy & Security > Accessibility" with title "GlobalHotkey Installed" subtitle "One more step needed"' 2>/dev/null || true
 
-# Launch Global Hotkey after installation
+# Launch GlobalHotkey after installation
 # Use open command to start the app in background as the current user
 if [ -d "$APP_PATH" ]; then
     # Get the console user (the logged-in user, not root running the installer)

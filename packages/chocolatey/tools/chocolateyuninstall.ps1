@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $packageName = 'global-hotkey'
-$softwareName = 'Global Hotkey*'
+$softwareName = 'GlobalHotkey*'
 $installerType = 'msi'
 
 [array]$key = Get-UninstallRegistryKey -SoftwareName $softwareName
