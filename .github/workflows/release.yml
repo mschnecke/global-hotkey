@@ -22,9 +22,6 @@ on:
 permissions:
   contents: write
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   bump-version:
     if: github.event_name == 'workflow_dispatch'
@@ -94,7 +91,6 @@ jobs:
           git push origin "v$VERSION"
 
   create-release:
-    name: Create Release
     runs-on: ubuntu-latest
     needs: [bump-version]
     if: always() && (github.event_name == 'push' || needs.bump-version.result == 'success')
@@ -102,8 +98,7 @@ jobs:
       release_id: ${{ steps.create_release.outputs.id }}
       version: ${{ steps.get_version.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', needs.bump-version.outputs.version) || github.ref }}
 
@@ -122,128 +117,197 @@ jobs:
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: Global Hotkey v${{ steps.get_version.outputs.version }}
+          body: |
+            ## Global Hotkey v${{ steps.get_version.outputs.version }}
+
+            A cross-platform application for launching programs via configurable keyboard shortcuts.
+
+            ### Installation
+
+            **macOS (Homebrew) - Recommended:**
+            ```bash
+            brew tap mschnecke/global-hotkey
+            brew install --cask global-hotkey
+            ```
+
+            **macOS (Direct Download):**
+            Download the `.pkg` installer: `Global.Hotkey_${{ steps.get_version.outputs.version }}_aarch64.pkg` (Apple Silicon)
+
+            **Windows (Chocolatey):**
+            ```powershell
+            choco source add -n="github-global-hotkey" -s="https://www.myget.org/F/mschnecke/api/v3/index.json"
+            choco install global-hotkey
+            ```
+
+            **Windows (Direct Download):**
+            Download `Global.Hotkey_${{ steps.get_version.outputs.version }}_x64_en-US.msi` from assets below.
+
+            ### Quick Start
+
+            - **Default hotkey:** Configure your shortcuts in the settings
+            - **Settings stored in:** `~/.global-hotkey.json`
+
+            ### Post-Installation (macOS)
+
+            Grant Accessibility permissions:
+            1. Open System Settings > Privacy & Security > Accessibility
+            2. Enable Global Hotkey in the list
+
+            ### Changelog
+            See [CHANGELOG.md](https://github.com/mschnecke/global-hotkey/blob/main/CHANGELOG.md) for details.
           draft: true
           prerelease: false
-          generate_release_notes: true
 
   build-tauri:
-    name: Build (${{ matrix.name }})
     needs: create-release
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Windows x64
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            bundles: msi
-          - name: macOS Apple Silicon
-            os: macos-latest
-            target: aarch64-apple-darwin
-            bundles: pkg
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin --bundles app'
+            arch: 'aarch64'
+          - platform: 'windows-latest'
+            args: '--bundles msi'
+            arch: 'x64'
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.platform }}
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: v${{ needs.create-release.outputs.version }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 'lts/*'
           cache: 'npm'
 
-      - name: Setup Rust
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
 
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: './src-tauri -> target'
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and upload release
+      - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+          args: ${{ matrix.args }}
+
+      # Build macOS .pkg installer from .app bundle
+      - name: Build macOS pkg installer
+        if: matrix.platform == 'macos-latest'
+        run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
+          ARCH="${{ matrix.arch }}"
+
+          chmod +x packages/macos/build-package.sh
+          chmod +x packages/macos/postinstall
+          ./packages/macos/build-package.sh "$VERSION" "$ARCH"
+
+      # Upload macOS .pkg to release
+      - name: Upload macOS pkg to release
+        if: matrix.platform == 'macos-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: ./dist/Global.Hotkey_${{ needs.create-release.outputs.version }}_${{ matrix.arch }}.pkg
+
+      # Upload Windows .msi to release
+      - name: Upload Windows installer to release
+        if: matrix.platform == 'windows-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: ./src-tauri/target/release/bundle/msi/Global.Hotkey_${{ needs.create-release.outputs.version }}_x64_en-US.msi
 
   publish-release:
-    name: Publish Release
     needs: [create-release, build-tauri]
     runs-on: ubuntu-latest
     steps:
       - name: Publish release
-        uses: softprops/action-gh-release@v2
+        uses: actions/github-script@v7
         with:
-          tag_name: v${{ needs.create-release.outputs.version }}
-          draft: false
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ needs.create-release.outputs.release_id }},
+              draft: false
+            });
 
   update-homebrew:
-    name: Update Homebrew Tap
     needs: [create-release, publish-release]
     runs-on: ubuntu-latest
-    if: ${{ !contains(needs.create-release.outputs.version, '-') }}
     steps:
-      - name: Update Homebrew formula
-        uses: peter-evans/repository-dispatch@v3
+      - name: Trigger Homebrew cask update
+        uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          repository: ${{ github.repository_owner }}/homebrew-global-hotkey
-          event-type: update-formula
-          client-payload: |
-            {
-              "version": "${{ needs.create-release.outputs.version }}",
-              "repo": "${{ github.repository }}"
-            }
-        continue-on-error: true
+          repository: mschnecke/homebrew-global-hotkey
+          event-type: update-cask
+          client-payload: '{"version": "${{ needs.create-release.outputs.version }}"}'
 
   update-chocolatey:
-    name: Update Chocolatey Package
     needs: [create-release, publish-release]
     runs-on: windows-latest
-    if: ${{ !contains(needs.create-release.outputs.version, '-') }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download MSI
+      - name: Download Windows installer
         run: |
           $version = "${{ needs.create-release.outputs.version }}"
-          $url = "https://github.com/${{ github.repository }}/releases/download/v${version}/Global.Hotkey_${version}_x64_en-US.msi"
-          Invoke-WebRequest -Uri $url -OutFile "global-hotkey.msi"
-          $hash = (Get-FileHash -Path "global-hotkey.msi" -Algorithm SHA256).Hash
-          echo "MSI_HASH=$hash" >> $env:GITHUB_ENV
-        shell: pwsh
+          Invoke-WebRequest -Uri "https://github.com/mschnecke/global-hotkey/releases/download/v$version/Global.Hotkey_${version}_x64_en-US.msi" -OutFile "Global-Hotkey-Setup.msi"
 
-      - name: Update Chocolatey files
+      - name: Generate checksum
+        id: checksum
+        run: |
+          $hash = (Get-FileHash -Path "Global-Hotkey-Setup.msi" -Algorithm SHA256).Hash
+          echo "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Update Chocolatey package
         run: |
           $version = "${{ needs.create-release.outputs.version }}"
+          $sha256 = "${{ steps.checksum.outputs.sha256 }}"
 
-          # Update nuspec
-          $nuspec = Get-Content "packages/chocolatey/global-hotkey.nuspec" -Raw
+          # Update chocolateyInstall.ps1
+          $installScript = Get-Content packages/chocolatey/tools/chocolateyInstall.ps1 -Raw
+          $installScript = $installScript -replace 'url64bit\s*=\s*''.*''', "url64bit = 'https://github.com/mschnecke/global-hotkey/releases/download/v$version/Global.Hotkey_${version}_x64_en-US.msi'"
+          $installScript = $installScript -replace 'checksum64\s*=\s*''.*''', "checksum64 = '$sha256'"
+          Set-Content -Path packages/chocolatey/tools/chocolateyInstall.ps1 -Value $installScript
+
+          # Update nuspec version
+          $nuspec = Get-Content packages/chocolatey/global-hotkey.nuspec -Raw
           $nuspec = $nuspec -replace '<version>.*</version>', "<version>$version</version>"
-          Set-Content "packages/chocolatey/global-hotkey.nuspec" $nuspec
+          Set-Content -Path packages/chocolatey/global-hotkey.nuspec -Value $nuspec
 
-          # Update install script
-          $install = Get-Content "packages/chocolatey/tools/chocolateyinstall.ps1" -Raw
-          $install = $install -replace "checksum\s*=\s*'[^']*'", "checksum = '$env:MSI_HASH'"
-          $install = $install -replace '/v[0-9]+\.[0-9]+\.[0-9]+/', "/v$version/"
-          Set-Content "packages/chocolatey/tools/chocolateyinstall.ps1" $install
-        shell: pwsh
-
-      - name: Pack and push to Chocolatey
+      - name: Pack Chocolatey package
         run: |
           cd packages/chocolatey
           choco pack
-          choco push global-hotkey.${{ needs.create-release.outputs.version }}.nupkg --source https://push.chocolatey.org/ --api-key ${{ secrets.CHOCOLATEY_API_KEY }}
-        shell: pwsh
-        continue-on-error: true
+
+      - name: Setup .NET for NuGet push
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish to MyGet
+        env:
+          MYGET_API_KEY: ${{ secrets.MYGET_API_KEY }}
+        run: |
+          $version = "${{ needs.create-release.outputs.version }}"
+          dotnet nuget push "packages/chocolatey/global-hotkey.$version.nupkg" `
+            --source "https://www.myget.org/F/mschnecke/api/v3/index.json" `
+            --api-key $env:MYGET_API_KEY

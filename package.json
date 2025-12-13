@@ -1,6 +1,6 @@
 {
   "name": "global-hotkey",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "description": "Cross-platform keystroke-summoned program launcher",
   "type": "module",
   "scripts": {
