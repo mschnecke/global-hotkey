@@ -264,25 +264,25 @@ A lightweight, hidden desktop application that allows users to configure global 
 
 ## 8. Configuration Storage
 
-### 8.1 Storage Locations
+### 8.1 Storage Location
 
-Use the user's home directory as the root for configuration files:
+Configuration is stored as a single JSON file in the user's home directory:
 
-| Platform | Config Directory   |
-| -------- | ------------------ |
-| Windows  | `~/global-hotkey/` |
-| macOS    | `~/global-hotkey/` |
+| Platform | Config File             |
+| -------- | ----------------------- |
+| Windows  | `~/.global-hotkey.json` |
+| macOS    | `~/.global-hotkey.json` |
 
 Resolve `~` to the user's home directory via Tauri's path API: `path.homeDir()` (Rust) or `@tauri-apps/api/path` (frontend).
 
 ### 8.2 Files
 
-All files are stored relative to `~/global-hotkey/`:
+| File                         | Path                           | Purpose                               |
+| ---------------------------- | ------------------------------ | ------------------------------------- |
+| `.global-hotkey.json`        | `~/.global-hotkey.json`        | Main configuration file               |
+| `.global-hotkey.backup.json` | `~/.global-hotkey.backup.json` | Automatic backup before modifications |
 
-| File                 | Path                                 | Purpose                               |
-| -------------------- | ------------------------------------ | ------------------------------------- |
-| `config.json`        | `~/global-hotkey/config.json`        | Main configuration file               |
-| `config.backup.json` | `~/global-hotkey/config.backup.json` | Automatic backup before modifications |
+**Note:** The application automatically migrates configurations from the legacy location (`~/global-hotkey/config.json`) to the new location on first run.
 
 ## 9. Platform-Specific Considerations
 
@@ -473,10 +473,11 @@ brew install --cask global-hotkey
 
 ## 14. Revision History
 
-| Version | Date       | Author | Changes                                          |
-| ------- | ---------- | ------ | ------------------------------------------------ |
-| 1.0     | 2024-12-12 | -      | Initial PRD                                      |
-| 1.1     | 2024-12-12 | -      | Added GitHub CI and Release workflows            |
-| 1.2     | 2024-12-12 | -      | Added Software Deployment (Chocolatey, Homebrew) |
-| 1.3     | 2024-12-12 | -      | Removed Apple Intel support (Apple Silicon only) |
-| 1.4     | 2024-12-12 | -      | Added Git Hooks (Husky + lint-staged)            |
+| Version | Date       | Author | Changes                                                  |
+| ------- | ---------- | ------ | -------------------------------------------------------- |
+| 1.0     | 2024-12-12 | -      | Initial PRD                                              |
+| 1.1     | 2024-12-12 | -      | Added GitHub CI and Release workflows                    |
+| 1.2     | 2024-12-12 | -      | Added Software Deployment (Chocolatey, Homebrew)         |
+| 1.3     | 2024-12-12 | -      | Removed Apple Intel support (Apple Silicon only)         |
+| 1.4     | 2024-12-12 | -      | Added Git Hooks (Husky + lint-staged)                    |
+| 1.5     | 2025-12-15 | -      | Updated config storage location to ~/.global-hotkey.json |

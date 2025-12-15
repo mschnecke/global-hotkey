@@ -48,10 +48,7 @@ brew install --cask global-hotkey
 
 ### Configuration Storage
 
-Configurations are stored in:
-
-- **Windows**: `%USERPROFILE%\global-hotkey\config.json`
-- **macOS**: `~/global-hotkey/config.json`
+Configurations are stored at `~/.global-hotkey.json` (in your home directory) on all platforms.
 
 ## Development
 
@@ -135,7 +132,6 @@ global-hotkey/
 ## Documentation
 
 - [Product Requirements Document](docs/PRD.md)
-- [Implementation Plan](docs/implementation-plan.md)
 
 ## License
 
