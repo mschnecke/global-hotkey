@@ -8,31 +8,50 @@ use crate::error::AppError;
 use super::schema::AppConfig;
 use super::validation;
 
-/// Get the configuration directory path
-fn get_config_dir() -> Result<PathBuf, AppError> {
-    let home =
-        dirs::home_dir().ok_or_else(|| AppError::Config("Cannot find home directory".into()))?;
-    Ok(home.join("global-hotkey"))
+/// Get the user's home directory
+fn get_home_dir() -> Result<PathBuf, AppError> {
+    dirs::home_dir().ok_or_else(|| AppError::Config("Cannot find home directory".into()))
 }
 
 /// Get the main configuration file path
 fn get_config_path() -> Result<PathBuf, AppError> {
-    Ok(get_config_dir()?.join("config.json"))
+    Ok(get_home_dir()?.join(".global-hotkey.json"))
 }
 
 /// Get the backup configuration file path
 fn get_backup_path() -> Result<PathBuf, AppError> {
-    Ok(get_config_dir()?.join("config.backup.json"))
+    Ok(get_home_dir()?.join(".global-hotkey.backup.json"))
+}
+
+/// Get the old configuration directory path (for migration)
+fn get_old_config_dir() -> Result<PathBuf, AppError> {
+    Ok(get_home_dir()?.join("global-hotkey"))
+}
+
+/// Migrate configuration from old location to new location
+fn migrate_from_old_location() -> Result<(), AppError> {
+    let old_config = get_old_config_dir()?.join("config.json");
+    let old_backup = get_old_config_dir()?.join("config.backup.json");
+    let new_config = get_config_path()?;
+    let new_backup = get_backup_path()?;
+
+    // Only migrate if old config exists and new config doesn't
+    if old_config.exists() && !new_config.exists() {
+        fs::copy(&old_config, &new_config)?;
+
+        // Also migrate backup if it exists
+        if old_backup.exists() && !new_backup.exists() {
+            fs::copy(&old_backup, &new_backup)?;
+        }
+    }
+
+    Ok(())
 }
 
 /// Initialize the configuration system
 pub fn init() -> Result<(), AppError> {
-    let config_dir = get_config_dir()?;
-
-    // Create config directory if it doesn't exist
-    if !config_dir.exists() {
-        fs::create_dir_all(&config_dir)?;
-    }
+    // Migrate from old location if needed
+    migrate_from_old_location()?;
 
     // Create default config if it doesn't exist
     let config_path = get_config_path()?;
