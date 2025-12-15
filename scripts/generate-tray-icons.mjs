@@ -27,9 +27,7 @@ async function generateTrayIcons() {
 
   // The source has a dark background - we need to extract the white content
   // First, let's get the raw pixel data
-  const { data, info } = await sourceImage
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+  const { data, info } = await sourceImage.raw().toBuffer({ resolveWithObject: true });
 
   console.warn('Processing image...');
 
