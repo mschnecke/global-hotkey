@@ -15,6 +15,7 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "generate:icons": "node scripts/generate-tray-icons.mjs",
     "prepare": "husky"
   },
   "dependencies": {
@@ -33,9 +34,11 @@
     "globals": "^15.13.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.11",
+    "png-to-ico": "^3.0.1",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
     "prettier-plugin-svelte": "^3.3.2",
+    "sharp": "^0.34.5",
     "svelte": "^5.14.1",
     "svelte-check": "^4.1.1",
     "tailwindcss": "^3.4.17",

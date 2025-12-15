@@ -107,6 +107,18 @@ async fn update_tray_menu(app: tauri::AppHandle) -> Result<(), String> {
     tray::update_menu(&app, &config.hotkeys).map_err(|e| e.to_string())
 }
 
+/// Update the tray icon based on system theme
+#[tauri::command]
+async fn update_tray_icon(app: tauri::AppHandle) -> Result<(), String> {
+    tray::update_tray_icon(&app).map_err(|e| e.to_string())
+}
+
+/// Check if system is using dark mode
+#[tauri::command]
+async fn is_dark_mode() -> bool {
+    tray::is_dark_mode()
+}
+
 /// Check if autostart is enabled
 #[tauri::command]
 async fn get_autostart(app: tauri::AppHandle) -> bool {
@@ -195,6 +207,8 @@ pub fn run() {
             get_executable_extensions,
             // Tray commands
             update_tray_menu,
+            update_tray_icon,
+            is_dark_mode,
             get_autostart,
             set_autostart,
         ])

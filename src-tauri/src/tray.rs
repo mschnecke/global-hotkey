@@ -1,8 +1,11 @@
 //! System tray functionality with dynamic menu
 
+use image::GenericImageView;
 use once_cell::sync::Lazy;
+use std::path::Path;
 use std::sync::RwLock;
 use tauri::{
+    image::Image,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{TrayIcon, TrayIconBuilder},
     AppHandle, Emitter, Manager, Wry,
@@ -12,6 +15,102 @@ use tauri_plugin_autostart::ManagerExt;
 use crate::config::schema::HotkeyConfig;
 use crate::error::AppError;
 use crate::hotkey;
+
+// ============================================================================
+// Theme Detection (Windows)
+// ============================================================================
+
+/// Check if the system is using dark mode (Windows only)
+#[cfg(target_os = "windows")]
+pub fn is_dark_mode() -> bool {
+    use std::ptr;
+    use windows::core::PCWSTR;
+    use windows::Win32::System::Registry::{
+        RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY_CURRENT_USER, KEY_READ, REG_VALUE_TYPE,
+    };
+
+    unsafe {
+        let subkey: Vec<u16> =
+            "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\0"
+                .encode_utf16()
+                .collect();
+        let value_name: Vec<u16> = "AppsUseLightTheme\0".encode_utf16().collect();
+
+        let mut hkey = std::mem::zeroed();
+        let result = RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            PCWSTR(subkey.as_ptr()),
+            0,
+            KEY_READ,
+            &mut hkey,
+        );
+
+        if result.is_err() {
+            return false; // Default to light mode if can't read
+        }
+
+        let mut data: u32 = 1;
+        let mut data_size: u32 = std::mem::size_of::<u32>() as u32;
+        let mut data_type = REG_VALUE_TYPE::default();
+
+        let result = RegQueryValueExW(
+            hkey,
+            PCWSTR(value_name.as_ptr()),
+            Some(ptr::null_mut()),
+            Some(&mut data_type),
+            Some(&mut data as *mut u32 as *mut u8),
+            Some(&mut data_size),
+        );
+
+        let _ = RegCloseKey(hkey);
+
+        if result.is_ok() {
+            // AppsUseLightTheme: 0 = dark mode, 1 = light mode
+            data == 0
+        } else {
+            false // Default to light mode
+        }
+    }
+}
+
+/// macOS handles theme automatically with iconAsTemplate, so always return false
+#[cfg(target_os = "macos")]
+pub fn is_dark_mode() -> bool {
+    false // macOS uses template icons that auto-adapt
+}
+
+/// Linux - default to light mode for now
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn is_dark_mode() -> bool {
+    false
+}
+
+/// Get the appropriate tray icon path based on system theme
+fn get_tray_icon_path() -> &'static str {
+    #[cfg(target_os = "windows")]
+    {
+        if is_dark_mode() {
+            "icons/tray-icon-dark.png" // White icon for dark backgrounds
+        } else {
+            "icons/tray-icon-light.png" // Gray icon for light backgrounds
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        "icons/tray-icon.png" // macOS uses template icon
+    }
+}
+
+/// Load a PNG image file and convert to Tauri Image format
+fn load_icon_from_path<P: AsRef<Path>>(path: P) -> Result<Image<'static>, AppError> {
+    let img = image::open(path.as_ref())
+        .map_err(|e| AppError::Tray(format!("Failed to open icon: {}", e)))?;
+
+    let (width, height) = img.dimensions();
+    let rgba = img.into_rgba8().into_raw();
+
+    Ok(Image::new_owned(rgba, width, height))
+}
 
 /// Store a reference to the tray icon for menu updates
 pub static TRAY: Lazy<RwLock<Option<TrayIcon>>> = Lazy::new(|| RwLock::new(None));
@@ -31,7 +130,18 @@ pub fn setup(app: &AppHandle) -> Result<TrayIcon, AppError> {
 fn build_tray(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<TrayIcon, AppError> {
     let menu = build_menu(app, hotkeys)?;
 
+    // Load the appropriate icon based on system theme
+    let icon_path = get_tray_icon_path();
+    let full_path = app
+        .path()
+        .resource_dir()
+        .map_err(|e| AppError::Tray(format!("Failed to get resource dir: {}", e)))?
+        .join(icon_path);
+
+    let icon = load_icon_from_path(&full_path)?;
+
     let tray = TrayIconBuilder::new()
+        .icon(icon)
         .menu(&menu)
         .show_menu_on_left_click(true)
         .tooltip("Global Hotkey")
@@ -271,4 +381,26 @@ pub fn set_autostart(app: &AppHandle, enabled: bool) -> Result<(), AppError> {
     };
 
     result.map_err(|e| AppError::Tray(format!("Failed to set autostart: {}", e)))
+}
+
+/// Update the tray icon based on current system theme
+/// Call this when the system theme changes
+pub fn update_tray_icon(app: &AppHandle) -> Result<(), AppError> {
+    let tray_ref = TRAY.read().unwrap();
+
+    if let Some(tray) = tray_ref.as_ref() {
+        let icon_path = get_tray_icon_path();
+        let full_path = app
+            .path()
+            .resource_dir()
+            .map_err(|e| AppError::Tray(format!("Failed to get resource dir: {}", e)))?
+            .join(icon_path);
+
+        let icon = load_icon_from_path(&full_path)?;
+
+        tray.set_icon(Some(icon))
+            .map_err(|e| AppError::Tray(format!("Failed to update tray icon: {}", e)))?;
+    }
+
+    Ok(())
 }
