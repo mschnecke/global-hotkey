@@ -146,6 +146,14 @@ pub fn run() {
             Some(vec!["--minimized"]),
         ))
         .setup(|app| {
+            use tauri::menu::{Menu, MenuItem};
+            use tauri::tray::TrayIconBuilder;
+            use tauri::Manager;
+
+            // Hide dock icon on macOS - this is a menu bar app
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
             // Initialize configuration directory and files
             if let Err(e) = config::manager::init() {
                 eprintln!("Failed to initialize config: {}", e);
@@ -160,16 +168,38 @@ pub fn run() {
             let loaded_config = config::manager::load_config().ok();
 
             // Set up system tray
-            if let Err(e) = tray::setup(app.handle()) {
-                eprintln!("Failed to setup tray: {}", e);
-            }
+            let settings_item =
+                MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&settings_item, &quit_item])?;
 
-            // Update tray with hotkeys after setup
-            if let Some(ref cfg) = loaded_config {
-                if let Err(e) = tray::update_menu(app.handle(), &cfg.hotkeys) {
-                    eprintln!("Failed to update tray menu: {}", e);
-                }
-            }
+            // Load icon - embedded at compile time for reliability
+            let tray_icon =
+                tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png"))
+                    .expect("Failed to load tray icon");
+
+            let tray = TrayIconBuilder::new()
+                .icon(tray_icon)
+                .icon_as_template(cfg!(target_os = "macos"))
+                .tooltip("Global Hotkey")
+                .menu(&menu)
+                .show_menu_on_left_click(true)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "settings" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+
+            // Keep tray alive for the lifetime of the app
+            std::mem::forget(tray);
 
             // Register saved hotkeys
             if let Some(cfg) = loaded_config {

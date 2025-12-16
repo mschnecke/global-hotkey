@@ -11,10 +11,7 @@
   },
   "app": {
     "withGlobalTauri": false,
-    "trayIcon": {
-      "iconPath": "icons/tray-icon.png",
-      "iconAsTemplate": true
-    },
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "GlobalHotkey - Settings",

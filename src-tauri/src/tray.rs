@@ -1,4 +1,5 @@
 //! System tray functionality with dynamic menu
+#![allow(dead_code)] // Some functions reserved for future dynamic menu updates
 
 use image::GenericImageView;
 use once_cell::sync::Lazy;
@@ -101,6 +102,57 @@ fn get_tray_icon_path() -> &'static str {
     }
 }
 
+/// Get the full path to an icon file, handling both dev and production modes
+fn get_icon_full_path(app: &AppHandle, icon_path: &str) -> Result<std::path::PathBuf, AppError> {
+    // First try the resource directory (production mode)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let full_path = resource_dir.join(icon_path);
+        println!("[TRAY DEBUG] Trying resource_dir path: {:?}", full_path);
+        if full_path.exists() {
+            println!("[TRAY DEBUG] Found icon at resource_dir: {:?}", full_path);
+            return Ok(full_path);
+        }
+    }
+
+    // Fallback for dev mode: try relative to the executable
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            // In dev mode, icons might be in src-tauri/icons relative to project root
+            // Try going up from target/debug to find src-tauri/icons
+            let mut current = exe_dir.to_path_buf();
+            for _ in 0..5 {
+                let dev_path = current.join("src-tauri").join(icon_path);
+                println!("[TRAY DEBUG] Trying dev path: {:?}", dev_path);
+                if dev_path.exists() {
+                    println!("[TRAY DEBUG] Found icon at dev path: {:?}", dev_path);
+                    return Ok(dev_path);
+                }
+                if !current.pop() {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Last resort: try current working directory
+    let cwd_path = std::env::current_dir()
+        .map_err(|e| AppError::Tray(format!("Failed to get current dir: {}", e)))?
+        .join("src-tauri")
+        .join(icon_path);
+
+    println!("[TRAY DEBUG] Trying cwd path: {:?}", cwd_path);
+    if cwd_path.exists() {
+        println!("[TRAY DEBUG] Found icon at cwd path: {:?}", cwd_path);
+        return Ok(cwd_path);
+    }
+
+    println!("[TRAY DEBUG] Icon not found anywhere!");
+    Err(AppError::Tray(format!(
+        "Could not find icon file: {}",
+        icon_path
+    )))
+}
+
 /// Load a PNG image file and convert to Tauri Image format
 fn load_icon_from_path<P: AsRef<Path>>(path: P) -> Result<Image<'static>, AppError> {
     let img = image::open(path.as_ref())
@@ -116,32 +168,45 @@ fn load_icon_from_path<P: AsRef<Path>>(path: P) -> Result<Image<'static>, AppErr
 pub static TRAY: Lazy<RwLock<Option<TrayIcon>>> = Lazy::new(|| RwLock::new(None));
 
 /// Set up the system tray
-pub fn setup(app: &AppHandle) -> Result<TrayIcon, AppError> {
+pub fn setup(app: &AppHandle) -> Result<(), AppError> {
     let tray = build_tray(app, &[])?;
 
-    // Store reference for later updates
-    let mut tray_ref = TRAY.write().unwrap();
-    *tray_ref = Some(tray.clone());
+    // Keep the tray icon alive for the lifetime of the app
+    // Without this, the tray icon is dropped and disappears
+    std::mem::forget(tray);
 
-    Ok(tray)
+    Ok(())
 }
 
 /// Build the tray icon with current hotkey list
 fn build_tray(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<TrayIcon, AppError> {
+    println!("[TRAY DEBUG] Building tray icon...");
     let menu = build_menu(app, hotkeys)?;
 
-    // Load the appropriate icon based on system theme
-    let icon_path = get_tray_icon_path();
-    let full_path = app
-        .path()
-        .resource_dir()
-        .map_err(|e| AppError::Tray(format!("Failed to get resource dir: {}", e)))?
-        .join(icon_path);
+    // Load icon using include_bytes! for reliable embedding
+    #[cfg(target_os = "macos")]
+    let icon = Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png"))
+        .map_err(|e| AppError::Tray(format!("Failed to load tray icon: {}", e)))?;
 
-    let icon = load_icon_from_path(&full_path)?;
+    #[cfg(target_os = "windows")]
+    let icon = {
+        if is_dark_mode() {
+            Image::from_bytes(include_bytes!("../icons/tray-icon-dark.png"))
+        } else {
+            Image::from_bytes(include_bytes!("../icons/tray-icon-light.png"))
+        }
+        .map_err(|e| AppError::Tray(format!("Failed to load tray icon: {}", e)))?
+    };
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let icon = Image::from_bytes(include_bytes!("../icons/tray-icon.png"))
+        .map_err(|e| AppError::Tray(format!("Failed to load tray icon: {}", e)))?;
+
+    println!("[TRAY DEBUG] Icon loaded successfully");
 
     let tray = TrayIconBuilder::new()
         .icon(icon)
+        .icon_as_template(cfg!(target_os = "macos"))
         .menu(&menu)
         .show_menu_on_left_click(true)
         .tooltip("Global Hotkey")
@@ -151,6 +216,7 @@ fn build_tray(app: &AppHandle, hotkeys: &[HotkeyConfig]) -> Result<TrayIcon, App
         .build(app)
         .map_err(|e| AppError::Tray(format!("Failed to build tray icon: {}", e)))?;
 
+    println!("[TRAY DEBUG] Tray icon built successfully!");
     Ok(tray)
 }
 
@@ -390,11 +456,7 @@ pub fn update_tray_icon(app: &AppHandle) -> Result<(), AppError> {
 
     if let Some(tray) = tray_ref.as_ref() {
         let icon_path = get_tray_icon_path();
-        let full_path = app
-            .path()
-            .resource_dir()
-            .map_err(|e| AppError::Tray(format!("Failed to get resource dir: {}", e)))?
-            .join(icon_path);
+        let full_path = get_icon_full_path(app, icon_path)?;
 
         let icon = load_icon_from_path(&full_path)?;
 
