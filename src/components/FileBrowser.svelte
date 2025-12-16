@@ -27,12 +27,15 @@
       const selected = await open({
         multiple: false,
         directory,
+        // On macOS, canChooseFiles allows .app bundles to be selected
+        // even though they're technically directories
+        canCreateDirectories: false,
         filters: directory
           ? undefined
           : [
               {
-                name: 'Executables',
-                extensions: ['exe', 'bat', 'cmd', 'ps1', 'com', 'app', '*'],
+                name: 'Applications',
+                extensions: ['app', 'exe', 'bat', 'cmd', 'ps1', 'com'],
               },
               {
                 name: 'All Files',
@@ -50,13 +53,6 @@
       loading = false;
     }
   }
-
-  function getFilename(path: string): string {
-    if (!path) return '';
-    const separator = path.includes('\\') ? '\\' : '/';
-    const parts = path.split(separator);
-    return parts[parts.length - 1] || path;
-  }
 </script>
 
 <div>
@@ -65,18 +61,15 @@
   {/if}
 
   <div class="flex items-center gap-2">
-    <div
-      class="flex-1 truncate rounded-md border px-3 py-2 text-sm
-        {error ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-gray-50'}"
+    <input
+      type="text"
+      {value}
+      oninput={(e) => onChange(e.currentTarget.value)}
+      {placeholder}
+      class="flex-1 rounded-md border px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500
+        {error ? 'border-red-300 bg-red-50' : 'border-gray-300'}"
       title={value}
-    >
-      {#if value}
-        <span class="text-gray-900">{getFilename(value)}</span>
-        <span class="ml-2 text-xs text-gray-500">{value}</span>
-      {:else}
-        <span class="text-gray-400">{placeholder}</span>
-      {/if}
-    </div>
+    />
 
     <button
       type="button"

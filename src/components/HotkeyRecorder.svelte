@@ -11,6 +11,7 @@
 
   let recording = $state(false);
   let currentModifiers = $state<string[]>([]);
+  let buttonRef: HTMLButtonElement | null = $state(null);
 
   function formatHotkey(hk: HotkeyBinding | null): string {
     if (!hk) return 'Click to record';
@@ -74,6 +75,8 @@
   function startRecording() {
     recording = true;
     currentModifiers = [];
+    // Ensure the button has focus to receive key events
+    buttonRef?.focus();
   }
 
   function clearHotkey() {
@@ -84,6 +87,7 @@
 <div class="flex items-center gap-2">
   <button
     type="button"
+    bind:this={buttonRef}
     class="flex-1 rounded-md border px-4 py-2 text-left font-mono text-sm transition-all
       {recording
       ? 'border-primary-500 ring-2 ring-primary-500 bg-primary-50'

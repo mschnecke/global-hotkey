@@ -46,14 +46,34 @@ async fn import_config(path: String) -> Result<AppConfig, String> {
 
 /// Register a hotkey with the system
 #[tauri::command]
-async fn register_hotkey(config: HotkeyConfig) -> Result<(), String> {
-    hotkey::manager::register(&config).map_err(|e| e.to_string())
+async fn register_hotkey(app: tauri::AppHandle, config: HotkeyConfig) -> Result<(), String> {
+    // Must run on main thread because GlobalHotKeyManager uses thread-local storage
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.run_on_main_thread(move || {
+        let result = hotkey::manager::register(&config);
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+
+    rx.recv()
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }
 
 /// Unregister a hotkey from the system
 #[tauri::command]
-async fn unregister_hotkey(id: String) -> Result<(), String> {
-    hotkey::manager::unregister(&id).map_err(|e| e.to_string())
+async fn unregister_hotkey(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    // Must run on main thread because GlobalHotKeyManager uses thread-local storage
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.run_on_main_thread(move || {
+        let result = hotkey::manager::unregister(&id);
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+
+    rx.recv()
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
 }
 
 /// Check if a hotkey binding conflicts with existing hotkeys
