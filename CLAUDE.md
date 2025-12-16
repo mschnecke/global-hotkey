@@ -57,12 +57,13 @@ global-hotkey/
 
 ## Development Status
 
-**Current Status**: Production-ready (v1.0.7)
+**Current Status**: Production-ready (v1.0.8)
 
 All core features are complete:
 
 - Global hotkey registration and management
 - Program launching (GUI and hidden CLI mode)
+- PATH-based program resolution (enter `git`, `code`, etc. without full paths)
 - System tray integration with dynamic theme-aware icons
 - Configuration import/export with automatic backups
 - Cross-platform support (Windows 10/11, macOS 10.15+)

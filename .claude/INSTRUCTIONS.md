@@ -25,12 +25,11 @@ global-hotkey/
 │       ├── ci-cd-setup.md
 │       └── platform-integration.md
 ├── docs/
-│   ├── PRD.md                   # Product Requirements Document
-│   └── implementation-plan.md   # Detailed implementation phases
-├── src/                         # Svelte frontend (to be created)
-├── src-tauri/                   # Rust backend (to be created)
-├── .github/workflows/           # CI/CD pipelines (to be created)
-└── packages/                    # Distribution packages (to be created)
+│   └── PRD.md                   # Product Requirements Document
+├── src/                         # Svelte frontend
+├── src-tauri/                   # Rust backend
+├── .github/workflows/           # CI/CD pipelines
+└── packages/                    # Distribution packages
 ```
 
 ---
@@ -273,7 +272,6 @@ To add a new agent to this system:
 ## Quick Start
 
 1. **Read the PRD:** `docs/PRD.md` for full requirements
-2. **Review the plan:** `docs/implementation-plan.md` for phases
-3. **Start with scaffolding:** Use `tauri-scaffolding` agent first
-4. **Follow the sequential workflow** for initial development
-5. **Consult routing table** when unsure which agent to use
+2. **Start with scaffolding:** Use `tauri-scaffolding` agent first
+3. **Follow the sequential workflow** for initial development
+4. **Consult routing table** when unsure which agent to use

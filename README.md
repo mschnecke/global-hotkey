@@ -6,6 +6,7 @@ A cross-platform desktop application for launching programs via configurable glo
 
 - **Global Hotkeys**: Register system-wide keyboard shortcuts that work from any application
 - **Program Launcher**: Launch any executable with custom arguments and working directory
+- **PATH Support**: Enter program names directly (e.g., `git`, `code`) without full paths
 - **System Tray**: Runs quietly in the background with quick access via tray menu
 - **Hidden Mode**: Launch CLI applications without visible terminal windows
 - **Import/Export**: Backup and restore your hotkey configurations
@@ -26,7 +27,7 @@ choco install global-hotkey
 
 ### macOS
 
-Download the latest `.dmg` from the [Releases](https://github.com/mschnecke/global-hotkey/releases) page.
+Download the latest `.pkg` installer from the [Releases](https://github.com/mschnecke/global-hotkey/releases) page (Apple Silicon only).
 
 Or install via Homebrew:
 
@@ -49,6 +50,22 @@ brew install --cask global-hotkey
 ### Configuration Storage
 
 Configurations are stored at `~/.global-hotkey.json` (in your home directory) on all platforms.
+
+## Permissions
+
+### macOS
+
+Global Hotkey requires **Accessibility** permissions to capture keyboard shortcuts:
+
+1. Open **System Settings** > **Privacy & Security** > **Accessibility**
+2. Click the lock icon to make changes
+3. Enable **Global Hotkey**
+
+The app will prompt you on first launch if permissions are not granted.
+
+### Windows
+
+No special permissions required for normal operation.
 
 ## Development
 

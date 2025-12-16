@@ -374,7 +374,14 @@ Resolve `~` to the user's home directory via Tauri's path API: `path.homeDir()` 
 **Pre-commit Hook** (`.husky/pre-commit`):
 
 ```bash
+# Run lint-staged for JS/TS/Svelte files
 npx lint-staged
+
+# Format Rust code (auto-fix)
+cargo fmt --manifest-path src-tauri/Cargo.toml
+
+# Type check (catches errors that eslint misses)
+npm run check || { echo "TypeScript/Svelte type check failed."; exit 1; }
 ```
 
 **lint-staged Configuration** (in package.json):
@@ -383,7 +390,9 @@ npx lint-staged
 {
   "lint-staged": {
     "src/**/*.{ts,svelte}": ["prettier --write", "eslint --fix --max-warnings 0"],
-    "src/**/*.css": ["prettier --write"]
+    "scripts/**/*.{js,mjs}": ["prettier --write", "eslint --fix --max-warnings 0"],
+    "src/**/*.css": ["prettier --write"],
+    "**/*.md": ["prettier --write"]
   }
 }
 ```
@@ -392,9 +401,11 @@ npx lint-staged
 
 1. Developer stages files with `git add`
 2. On `git commit`, Husky triggers pre-commit hook
-3. lint-staged runs Prettier and ESLint only on staged files
-4. If linting fails, commit is aborted
-5. If linting passes (with auto-fixes applied), commit proceeds
+3. lint-staged runs Prettier and ESLint on staged JS/TS/Svelte/script files
+4. Rust code is auto-formatted with `cargo fmt`
+5. TypeScript/Svelte type checking runs to catch type errors
+6. If any check fails, commit is aborted
+7. If all checks pass (with auto-fixes applied), commit proceeds
 
 ## 11. Software Deployment
 
