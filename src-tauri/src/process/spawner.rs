@@ -13,9 +13,9 @@ use super::platform;
 #[cfg(target_os = "macos")]
 fn get_extra_paths() -> Vec<PathBuf> {
     let mut paths = vec![
-        PathBuf::from("/opt/homebrew/bin"),      // Homebrew on Apple Silicon
+        PathBuf::from("/opt/homebrew/bin"), // Homebrew on Apple Silicon
         PathBuf::from("/opt/homebrew/sbin"),
-        PathBuf::from("/usr/local/bin"),         // Homebrew on Intel, common tools
+        PathBuf::from("/usr/local/bin"), // Homebrew on Intel, common tools
         PathBuf::from("/usr/local/sbin"),
         PathBuf::from("/usr/bin"),
         PathBuf::from("/bin"),
@@ -51,9 +51,8 @@ fn find_in_extra_paths(name: &str) -> Option<PathBuf> {
 /// Launch a program with the given configuration
 pub fn launch(config: &ProgramConfig) -> Result<(), AppError> {
     // Resolve the program path - check direct path first, then PATH
-    let resolved_path = resolve_program(&config.path).ok_or_else(|| {
-        AppError::Process(format!("Program not found: {}", config.path))
-    })?;
+    let resolved_path = resolve_program(&config.path)
+        .ok_or_else(|| AppError::Process(format!("Program not found: {}", config.path)))?;
 
     let path = Path::new(&resolved_path);
 
