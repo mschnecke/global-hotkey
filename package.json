@@ -51,6 +51,10 @@
       "prettier --write",
       "eslint --fix --max-warnings 0"
     ],
+    "scripts/**/*.{js,mjs}": [
+      "prettier --write",
+      "eslint --fix --max-warnings 0"
+    ],
     "src/**/*.css": [
       "prettier --write"
     ],

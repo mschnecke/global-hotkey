@@ -48,8 +48,8 @@ const storeIcons = [
 // ICO sizes (Windows requires multiple sizes)
 const icoSizes = [16, 24, 32, 48, 64, 128, 256];
 
-// ICNS sizes (macOS)
-const icnsSizes = [16, 32, 64, 128, 256, 512, 1024];
+// ICNS sizes (macOS) - used for reference, actual sizes defined in generateIcns()
+const _icnsSizes = [16, 32, 64, 128, 256, 512, 1024];
 
 async function generatePngIcons() {
   console.warn('Generating PNG icons...');
@@ -132,7 +132,7 @@ async function generateIcns() {
       stdio: 'pipe',
     });
     console.warn('  icon.icns created');
-  } catch (error) {
+  } catch {
     console.warn('  Warning: iconutil failed (only works on macOS)');
     console.warn('  You may need to generate icon.icns manually on a Mac');
   }

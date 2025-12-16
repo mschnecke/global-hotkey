@@ -1,2 +1,8 @@
+# Run lint-staged for JS/TS/Svelte files
 npx lint-staged
-cargo fmt --manifest-path src-tauri/Cargo.toml -- --check || { echo "Rust formatting issues found. Run 'cargo fmt --manifest-path src-tauri/Cargo.toml' to fix."; exit 1; }
+
+# Format Rust code (auto-fix)
+cargo fmt --manifest-path src-tauri/Cargo.toml
+
+# Type check (catches errors that eslint misses)
+npm run check || { echo "TypeScript/Svelte type check failed. Run 'npm run check' to see errors."; exit 1; }

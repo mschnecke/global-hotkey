@@ -47,9 +47,10 @@ async function generateTrayIcons() {
     const srcIdx = i * info.channels;
     const dstIdx = i * 4;
 
-    const r = data[srcIdx];
-    const g = data[srcIdx + 1];
-    const b = data[srcIdx + 2];
+    // Original RGB values not needed - we're converting to solid white
+    const _r = data[srcIdx];
+    const _g = data[srcIdx + 1];
+    const _b = data[srcIdx + 2];
     const a = info.channels === 4 ? data[srcIdx + 3] : 255;
 
     // If pixel has alpha (is part of the icon), make it white
