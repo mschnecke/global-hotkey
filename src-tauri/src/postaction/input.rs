@@ -11,8 +11,9 @@ pub struct InputSimulator {
 
 impl InputSimulator {
     pub fn new() -> Result<Self, AppError> {
-        let enigo = Enigo::new(&Settings::default())
-            .map_err(|e| AppError::PostAction(format!("Failed to create input simulator: {}", e)))?;
+        let enigo = Enigo::new(&Settings::default()).map_err(|e| {
+            AppError::PostAction(format!("Failed to create input simulator: {}", e))
+        })?;
         Ok(Self { enigo })
     }
 
