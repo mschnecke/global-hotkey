@@ -1,11 +1,15 @@
 //! Audio encoding to Opus (default) and WAV (fallback) formats
 
-use audiopus::{coder::Encoder, Application, Channels, SampleRate};
 use crate::error::AppError;
+use audiopus::{coder::Encoder, Application, Channels, SampleRate};
 use std::io::Cursor;
 
 /// Encode PCM samples to Opus in Ogg container (default, ~10x smaller than WAV)
-pub fn encode_to_opus(samples: &[f32], sample_rate: u32, channels: u16) -> Result<Vec<u8>, AppError> {
+pub fn encode_to_opus(
+    samples: &[f32],
+    sample_rate: u32,
+    channels: u16,
+) -> Result<Vec<u8>, AppError> {
     // Opus requires specific sample rates: 8000, 12000, 16000, 24000, 48000
     // Resample if needed
     let (resampled, target_rate) = resample_for_opus(samples, sample_rate);
@@ -145,7 +149,12 @@ fn wrap_in_ogg(opus_data: &[u8], sample_rate: u32, channels: u16) -> Result<Vec<
         comment_header.extend_from_slice(&0u32.to_le_bytes()); // No comments
 
         writer
-            .write_packet(comment_header, 0, ogg::writing::PacketWriteEndInfo::EndPage, 0)
+            .write_packet(
+                comment_header,
+                0,
+                ogg::writing::PacketWriteEndInfo::EndPage,
+                0,
+            )
             .map_err(|e| AppError::Audio(format!("Failed to write Opus comment: {}", e)))?;
 
         // Write audio data as a single packet
@@ -163,7 +172,11 @@ fn wrap_in_ogg(opus_data: &[u8], sample_rate: u32, channels: u16) -> Result<Vec<
 }
 
 /// Encode PCM samples to WAV format (fallback)
-pub fn encode_to_wav(samples: &[f32], sample_rate: u32, channels: u16) -> Result<Vec<u8>, AppError> {
+pub fn encode_to_wav(
+    samples: &[f32],
+    sample_rate: u32,
+    channels: u16,
+) -> Result<Vec<u8>, AppError> {
     let spec = hound::WavSpec {
         channels,
         sample_rate,

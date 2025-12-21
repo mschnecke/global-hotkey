@@ -18,7 +18,9 @@ use std::sync::Mutex;
 static AUDIO_RECORDER: Lazy<Mutex<Option<audio::AudioRecorderHandle>>> =
     Lazy::new(|| Mutex::new(None));
 
-pub use config::schema::{AppConfig, AppSettings, HotkeyAction, HotkeyBinding, HotkeyConfig, ProgramConfig};
+pub use config::schema::{
+    AppConfig, AppSettings, HotkeyAction, HotkeyBinding, HotkeyConfig, ProgramConfig,
+};
 pub use error::AppError;
 
 // ============================================================================

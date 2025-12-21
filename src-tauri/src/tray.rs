@@ -527,7 +527,9 @@ pub fn set_icon_state(state: TrayIconState) {
                         {
                             let _ = tray.set_icon_as_template(true);
                         }
-                        if let Ok(icon) = Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png")) {
+                        if let Ok(icon) =
+                            Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png"))
+                        {
                             let _ = tray.set_icon(Some(icon));
                         }
                     }
@@ -561,12 +563,7 @@ pub fn send_notification(title: &str, body: &str) {
             .unwrap_or(true);
 
         if notifications_enabled {
-            if let Err(e) = app.notification()
-                .builder()
-                .title(title)
-                .body(body)
-                .show()
-            {
+            if let Err(e) = app.notification().builder().title(title).body(body).show() {
                 eprintln!("Failed to send notification: {}", e);
             }
         }

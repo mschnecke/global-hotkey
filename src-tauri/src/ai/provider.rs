@@ -27,6 +27,5 @@ pub trait AiProvider: Send + Sync {
     ) -> impl std::future::Future<Output = Result<AiResponse, AppError>> + Send;
 
     /// Test the connection/API key
-    fn test_connection(&self)
-        -> impl std::future::Future<Output = Result<bool, AppError>> + Send;
+    fn test_connection(&self) -> impl std::future::Future<Output = Result<bool, AppError>> + Send;
 }

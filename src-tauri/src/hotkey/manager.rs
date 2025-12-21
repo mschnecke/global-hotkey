@@ -15,7 +15,7 @@ use crate::audio;
 use crate::config::schema::{AiInputSource, HotkeyAction, HotkeyBinding, HotkeyConfig};
 use crate::error::AppError;
 use crate::process;
-use crate::tray::{set_icon_state, send_notification, TrayIconState};
+use crate::tray::{send_notification, set_icon_state, TrayIconState};
 
 /// Track active audio recordings by hotkey ID
 static ACTIVE_RECORDINGS: Lazy<RwLock<HashMap<String, audio::AudioRecorderHandle>>> =
@@ -120,8 +120,13 @@ fn handle_event(event: GlobalHotKeyEvent) {
                         input_source,
                         provider_id,
                     } => {
-                        if let Err(e) = execute_ai_action(&config_id, &role_id, &input_source, &provider_id) {
-                            eprintln!("Failed to execute AI action for hotkey '{}': {}", hotkey_name, e);
+                        if let Err(e) =
+                            execute_ai_action(&config_id, &role_id, &input_source, &provider_id)
+                        {
+                            eprintln!(
+                                "Failed to execute AI action for hotkey '{}': {}",
+                                hotkey_name, e
+                            );
                         }
                     }
                 }
@@ -141,9 +146,9 @@ fn execute_ai_action(
     match input_source {
         AiInputSource::Clipboard => execute_clipboard_ai_action(role_id),
         AiInputSource::RecordAudio { .. } => execute_audio_ai_action(hotkey_id, role_id),
-        AiInputSource::ProcessOutput => {
-            Err(AppError::Ai("Process output not yet implemented".to_string()))
-        }
+        AiInputSource::ProcessOutput => Err(AppError::Ai(
+            "Process output not yet implemented".to_string(),
+        )),
     }
 }
 
@@ -192,8 +197,8 @@ fn execute_clipboard_ai_action_inner(role_id: &str) -> Result<(), AppError> {
     let rt = tokio::runtime::Runtime::new()
         .map_err(|e| AppError::Ai(format!("Failed to create runtime: {}", e)))?;
 
-    let mut clipboard = Clipboard::new()
-        .map_err(|e| AppError::Ai(format!("Clipboard error: {}", e)))?;
+    let mut clipboard =
+        Clipboard::new().map_err(|e| AppError::Ai(format!("Clipboard error: {}", e)))?;
     let text = clipboard
         .get_text()
         .map_err(|e| AppError::Ai(format!("Failed to read clipboard: {}", e)))?;
@@ -322,8 +327,8 @@ fn process_audio_recording(
     let response = rt.block_on(gemini.send_audio(&role.system_prompt, &audio_data, mime_type))?;
 
     // Save response to clipboard
-    let mut clipboard = Clipboard::new()
-        .map_err(|e| AppError::Ai(format!("Clipboard error: {}", e)))?;
+    let mut clipboard =
+        Clipboard::new().map_err(|e| AppError::Ai(format!("Clipboard error: {}", e)))?;
     clipboard
         .set_text(&response.text)
         .map_err(|e| AppError::Ai(format!("Failed to set clipboard: {}", e)))?;
