@@ -75,7 +75,7 @@ export interface HotkeyConfig {
   hotkey: HotkeyBinding;
   program: ProgramConfig;
   enabled: boolean;
-  postAction?: PostAction;  // NEW FIELD
+  postAction?: PostAction; // NEW FIELD
   createdAt: string;
   updatedAt: string;
 }
@@ -142,12 +142,12 @@ fn simulate_paste() -> Result<(), String> {
 
 **Options**:
 
-| Option | Pros | Cons |
-|--------|------|------|
-| A. Wait for process exit | Accurate completion detection | Blocks if process hangs; changes current behavior |
-| B. Fixed delay | Simple implementation | Unreliable; may paste too early or wait too long |
-| C. Clipboard change detection | Accurate for clipboard use cases | Complex; doesn't work for all post-actions |
-| D. User-configured delay | User controls timing | Requires user to know how long process takes |
+| Option                        | Pros                             | Cons                                              |
+| ----------------------------- | -------------------------------- | ------------------------------------------------- |
+| A. Wait for process exit      | Accurate completion detection    | Blocks if process hangs; changes current behavior |
+| B. Fixed delay                | Simple implementation            | Unreliable; may paste too early or wait too long  |
+| C. Clipboard change detection | Accurate for clipboard use cases | Complex; doesn't work for all post-actions        |
+| D. User-configured delay      | User controls timing             | Requires user to know how long process takes      |
 
 **Recommended**: Option A with timeout + user-configured delay as fallback.
 
@@ -209,6 +209,7 @@ enigo = "0.1"  # Cross-platform keyboard/mouse simulation
 ### Permissions (macOS)
 
 macOS requires Accessibility permissions to simulate keyboard input. The app must:
+
 1. Be added to System Preferences → Security & Privacy → Privacy → Accessibility
 2. Show a prompt guiding users to enable this permission
 
@@ -259,6 +260,7 @@ Increment config version from `1.0.0` to `1.1.0`.
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure (MVP)
+
 - Add `PostAction` enum with `Paste` variant only
 - Add `post_action` field to `HotkeyConfig`
 - Implement keyboard simulation with `enigo`
@@ -266,11 +268,13 @@ Increment config version from `1.0.0` to `1.1.0`.
 - Update UI with post-action dropdown
 
 ### Phase 2: Process Completion Detection
+
 - Add wait-for-exit option
 - Implement timeout handling
 - Add configurable delay
 
 ### Phase 3: Additional Actions
+
 - `TypeText` action
 - `Notify` action
 - Future: `TriggerHotkey` action
