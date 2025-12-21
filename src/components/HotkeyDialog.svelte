@@ -1,5 +1,13 @@
 <script lang="ts">
-  import type { HotkeyConfig, HotkeyBinding, ProgramConfig, PostActionsConfig } from '$lib/types';
+  import type {
+    HotkeyConfig,
+    HotkeyBinding,
+    HotkeyAction,
+    ProgramConfig,
+    PostActionsConfig,
+    AiRole,
+    AiInputSource,
+  } from '$lib/types';
   import HotkeyRecorder from './HotkeyRecorder.svelte';
   import FileBrowser from './FileBrowser.svelte';
   import PostActionEditor from './PostActionEditor.svelte';
@@ -8,25 +16,35 @@
   interface Props {
     open: boolean;
     hotkey: HotkeyConfig | null;
+    roles: AiRole[];
     onSave: (hotkey: Omit<HotkeyConfig, 'id' | 'createdAt' | 'updatedAt'>) => void;
     onClose: () => void;
   }
 
-  let { open, hotkey, onSave, onClose }: Props = $props();
+  let { open, hotkey, roles, onSave, onClose }: Props = $props();
 
   // Form state
   let name = $state('');
   let hotkeyBinding = $state<HotkeyBinding>({ modifiers: [], key: '' });
+  let actionType = $state<'launchProgram' | 'callAi'>('launchProgram');
+  // Program action state
   let programPath = $state('');
   let programArgs = $state('');
   let workingDir = $state('');
   let hidden = $state(false);
+  // AI action state
+  let aiRoleId = $state('');
+  let aiInputSource = $state<AiInputSource>({ type: 'clipboard' });
+  // Common state
   let enabled = $state(true);
   let postActions = $state<PostActionsConfig>({
     enabled: false,
     trigger: { type: 'onExit' },
     actions: [],
   });
+
+  // AI roles - use prop from parent (includes both built-in and custom roles)
+  const availableRoles = $derived(roles);
 
   // Validation state
   let errors = $state<Record<string, string>>({});
@@ -42,23 +60,35 @@
       if (hotkey) {
         name = hotkey.name;
         hotkeyBinding = { ...hotkey.hotkey };
-        programPath = hotkey.program.path;
-        programArgs = hotkey.program.arguments.join(' ');
-        workingDir = hotkey.program.workingDirectory || '';
-        hidden = hotkey.program.hidden;
         enabled = hotkey.enabled;
         postActions = hotkey.postActions || {
           enabled: false,
           trigger: { type: 'onExit' },
           actions: [],
         };
+
+        // Handle action type
+        if (hotkey.action.type === 'launchProgram') {
+          actionType = 'launchProgram';
+          programPath = hotkey.action.program.path;
+          programArgs = hotkey.action.program.arguments.join(' ');
+          workingDir = hotkey.action.program.workingDirectory || '';
+          hidden = hotkey.action.program.hidden;
+        } else if (hotkey.action.type === 'callAi') {
+          actionType = 'callAi';
+          aiRoleId = hotkey.action.roleId;
+          aiInputSource = hotkey.action.inputSource;
+        }
       } else {
         name = '';
         hotkeyBinding = { modifiers: [], key: '' };
+        actionType = 'launchProgram';
         programPath = '';
         programArgs = '';
         workingDir = '';
         hidden = false;
+        aiRoleId = roles[0]?.id || '';
+        aiInputSource = { type: 'clipboard' };
         enabled = true;
         postActions = { enabled: false, trigger: { type: 'onExit' }, actions: [] };
       }
@@ -94,17 +124,23 @@
       }
     }
 
-    // Validate program path
-    if (!programPath.trim()) {
-      newErrors.program = 'Program path is required';
-    } else {
-      try {
-        const isValid = await validateProgramPath(programPath);
-        if (!isValid) {
-          newErrors.program = 'Program not found or not executable';
+    // Validate action based on type
+    if (actionType === 'launchProgram') {
+      if (!programPath.trim()) {
+        newErrors.program = 'Program path is required';
+      } else {
+        try {
+          const isValid = await validateProgramPath(programPath);
+          if (!isValid) {
+            newErrors.program = 'Program not found or not executable';
+          }
+        } catch (e) {
+          console.error('Failed to validate path:', e);
         }
-      } catch (e) {
-        console.error('Failed to validate path:', e);
+      }
+    } else if (actionType === 'callAi') {
+      if (!aiRoleId) {
+        newErrors.aiRole = 'AI role is required';
       }
     }
 
@@ -120,17 +156,27 @@
         return;
       }
 
-      const program: ProgramConfig = {
-        path: programPath,
-        arguments: programArgs.trim() ? programArgs.split(' ').filter((a) => a) : [],
-        workingDirectory: workingDir || undefined,
-        hidden,
-      };
+      let action: HotkeyAction;
+      if (actionType === 'launchProgram') {
+        const program: ProgramConfig = {
+          path: programPath,
+          arguments: programArgs.trim() ? programArgs.split(' ').filter((a) => a) : [],
+          workingDirectory: workingDir || undefined,
+          hidden,
+        };
+        action = { type: 'launchProgram', program };
+      } else {
+        action = {
+          type: 'callAi',
+          roleId: aiRoleId,
+          inputSource: aiInputSource,
+        };
+      }
 
       onSave({
         name: name.trim(),
         hotkey: hotkeyBinding,
-        program,
+        action,
         enabled,
         postActions,
       });
@@ -220,53 +266,129 @@
             </div>
           </div>
 
-          <!-- Program Path -->
+          <!-- Action Type -->
           <div>
-            <FileBrowser
-              label="Program"
-              value={programPath}
-              onChange={(path) => (programPath = path)}
-              placeholder="Select an executable..."
-              error={errors.program}
-            />
-          </div>
-
-          <!-- Arguments -->
-          <div>
-            <label for="args" class="block text-sm font-medium text-gray-700">
-              Arguments <span class="text-gray-400">(optional)</span>
-            </label>
-            <input
-              type="text"
-              id="args"
-              bind:value={programArgs}
+            <label for="action-type" class="block text-sm font-medium text-gray-700"
+              >Action Type</label
+            >
+            <select
+              id="action-type"
+              bind:value={actionType}
               class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              placeholder="e.g., --new-window"
-            />
+            >
+              <option value="launchProgram">Launch Program</option>
+              <option value="callAi">Call AI</option>
+            </select>
           </div>
 
-          <!-- Working Directory -->
-          <div>
-            <FileBrowser
-              label="Working Directory"
-              value={workingDir}
-              onChange={(path) => (workingDir = path)}
-              placeholder="Use program's directory"
-              directory={true}
-            />
-          </div>
-
-          <!-- Options -->
-          <div class="flex items-center gap-6">
-            <label class="flex items-center">
-              <input
-                type="checkbox"
-                bind:checked={hidden}
-                class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          {#if actionType === 'launchProgram'}
+            <!-- Program Path -->
+            <div>
+              <FileBrowser
+                label="Program"
+                value={programPath}
+                onChange={(path) => (programPath = path)}
+                placeholder="Select an executable..."
+                error={errors.program}
               />
-              <span class="ml-2 text-sm text-gray-700">Run hidden (no window)</span>
-            </label>
+            </div>
 
+            <!-- Arguments -->
+            <div>
+              <label for="args" class="block text-sm font-medium text-gray-700">
+                Arguments <span class="text-gray-400">(optional)</span>
+              </label>
+              <input
+                type="text"
+                id="args"
+                bind:value={programArgs}
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="e.g., --new-window"
+              />
+            </div>
+
+            <!-- Working Directory -->
+            <div>
+              <FileBrowser
+                label="Working Directory"
+                value={workingDir}
+                onChange={(path) => (workingDir = path)}
+                placeholder="Use program's directory"
+                directory={true}
+              />
+            </div>
+
+            <!-- Hidden option -->
+            <div>
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  bind:checked={hidden}
+                  class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span class="ml-2 text-sm text-gray-700">Run hidden (no window)</span>
+              </label>
+            </div>
+
+            <!-- Post-Actions (only for program launch) -->
+            <PostActionEditor value={postActions} onChange={(config) => (postActions = config)} />
+          {:else if actionType === 'callAi'}
+            <!-- AI Role -->
+            <div>
+              <label for="ai-role" class="block text-sm font-medium text-gray-700">AI Role</label>
+              <select
+                id="ai-role"
+                bind:value={aiRoleId}
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500
+                  {errors.aiRole ? 'border-red-300' : ''}"
+              >
+                {#each availableRoles as role}
+                  <option value={role.id}>{role.name}</option>
+                {/each}
+              </select>
+              {#if errors.aiRole}
+                <p class="mt-1 text-sm text-red-600">{errors.aiRole}</p>
+              {/if}
+              {#if availableRoles.find((r) => r.id === aiRoleId)}
+                <p class="mt-1 text-xs text-gray-500">
+                  {availableRoles.find((r) => r.id === aiRoleId)?.systemPrompt}
+                </p>
+              {/if}
+            </div>
+
+            <!-- Input Source -->
+            <div>
+              <label for="input-source" class="block text-sm font-medium text-gray-700"
+                >Input Source</label
+              >
+              <select
+                id="input-source"
+                value={aiInputSource.type}
+                onchange={(e) => {
+                  const value = e.currentTarget.value;
+                  if (value === 'clipboard') {
+                    aiInputSource = { type: 'clipboard' };
+                  } else if (value === 'recordAudio') {
+                    aiInputSource = { type: 'recordAudio', maxDurationMs: 30000, format: 'wav' };
+                  }
+                }}
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              >
+                <option value="clipboard">Clipboard (text)</option>
+                <option value="recordAudio">Record Audio</option>
+              </select>
+              <p class="mt-1 text-xs text-gray-500">
+                {#if aiInputSource.type === 'clipboard'}
+                  Reads text from clipboard, sends to AI, and saves response back to clipboard.
+                {:else}
+                  Records audio when hotkey is pressed, sends to AI for transcription/processing.
+                {/if}
+              </p>
+            </div>
+          {/if}
+
+          <!-- Enabled option -->
+          <div>
             <label class="flex items-center">
               <input
                 type="checkbox"
@@ -276,9 +398,6 @@
               <span class="ml-2 text-sm text-gray-700">Enabled</span>
             </label>
           </div>
-
-          <!-- Post-Actions -->
-          <PostActionEditor value={postActions} onChange={(config) => (postActions = config)} />
         </div>
 
         <!-- Footer -->

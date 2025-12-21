@@ -14,11 +14,16 @@ export interface ProgramConfig {
   hidden: boolean;
 }
 
+// Main action types for hotkeys
+export type HotkeyAction =
+  | { type: 'launchProgram'; program: ProgramConfig }
+  | { type: 'callAi'; roleId: string; inputSource: AiInputSource; providerId?: string };
+
 export interface HotkeyConfig {
   id: string;
   name: string;
   hotkey: HotkeyBinding;
-  program: ProgramConfig;
+  action: HotkeyAction;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -28,6 +33,7 @@ export interface HotkeyConfig {
 export interface AppSettings {
   startWithSystem: boolean;
   showTrayNotifications: boolean;
+  ai?: AiSettings;
 }
 
 export interface AppConfig {
@@ -60,3 +66,41 @@ export interface PostActionsConfig {
   trigger: PostActionTrigger;
   actions: PostAction[];
 }
+
+// ============================================================================
+// AI Module Types
+// ============================================================================
+
+export type AiProviderType = 'gemini' | 'openai' | 'anthropic' | 'ollama';
+
+export interface AiProviderConfig {
+  id: string;
+  providerType: AiProviderType;
+  apiKey: string;
+  model?: string;
+  baseUrl?: string;
+  enabled: boolean;
+}
+
+export type OutputFormat = 'plain' | 'markdown' | 'json';
+
+export interface AiRole {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  outputFormat: OutputFormat;
+  isBuiltin: boolean;
+}
+
+export interface AiSettings {
+  providers: AiProviderConfig[];
+  defaultProviderId?: string;
+  roles: AiRole[];
+}
+
+export type AudioFormat = 'opus' | 'wav';
+
+export type AiInputSource =
+  | { type: 'clipboard' }
+  | { type: 'recordAudio'; maxDurationMs: number; format: AudioFormat }
+  | { type: 'processOutput' };

@@ -12,10 +12,24 @@ use tauri::{
     AppHandle, Emitter, Manager, Wry,
 };
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_notification::NotificationExt;
 
 use crate::config::schema::HotkeyConfig;
 use crate::error::AppError;
 use crate::hotkey;
+
+/// Tray icon state
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TrayIconState {
+    Normal,
+    Active, // Recording or processing
+}
+
+/// Global app handle for tray/notification access from hotkey manager
+pub static APP_HANDLE: Lazy<RwLock<Option<AppHandle>>> = Lazy::new(|| RwLock::new(None));
+
+/// Current tray icon state
+static TRAY_STATE: Lazy<RwLock<TrayIconState>> = Lazy::new(|| RwLock::new(TrayIconState::Normal));
 
 // ============================================================================
 // Theme Detection (Windows)
@@ -387,32 +401,39 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
 
 /// Execute a program associated with a hotkey ID
 fn execute_hotkey_program(id: &str) {
+    use crate::config::schema::HotkeyAction;
+
     let registry = hotkey::manager::REGISTRY.read().unwrap();
     if let Some((_, _, config)) = registry.get(id) {
-        let program_config = config.program.clone();
+        let action = config.action.clone();
         let hotkey_name = config.name.clone();
 
         std::thread::spawn(move || {
-            if let Err(e) = crate::process::spawner::launch(&program_config) {
-                eprintln!(
-                    "Failed to launch program for hotkey '{}': {}",
-                    hotkey_name, e
-                );
+            if let HotkeyAction::LaunchProgram { program } = action {
+                if let Err(e) = crate::process::spawner::launch(&program) {
+                    eprintln!(
+                        "Failed to launch program for hotkey '{}': {}",
+                        hotkey_name, e
+                    );
+                }
             }
+            // Note: CallAi actions are not supported from tray menu
         });
     } else {
         // Hotkey not in registry (maybe disabled), try to find in config
         if let Ok(config) = crate::config::manager::load_config() {
             if let Some(hk) = config.hotkeys.iter().find(|h| h.id == id) {
-                let program_config = hk.program.clone();
+                let action = hk.action.clone();
                 let hotkey_name = hk.name.clone();
 
                 std::thread::spawn(move || {
-                    if let Err(e) = crate::process::spawner::launch(&program_config) {
-                        eprintln!(
-                            "Failed to launch program for hotkey '{}': {}",
-                            hotkey_name, e
-                        );
+                    if let HotkeyAction::LaunchProgram { program } = action {
+                        if let Err(e) = crate::process::spawner::launch(&program) {
+                            eprintln!(
+                                "Failed to launch program for hotkey '{}': {}",
+                                hotkey_name, e
+                            );
+                        }
                     }
                 });
             }
@@ -465,4 +486,89 @@ pub fn update_tray_icon(app: &AppHandle) -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+// ============================================================================
+// Icon State Management
+// ============================================================================
+
+/// Store the app handle for global access
+pub fn set_app_handle(app: AppHandle) {
+    let mut handle = APP_HANDLE.write().unwrap();
+    *handle = Some(app);
+}
+
+/// Set the tray icon state (normal or active)
+pub fn set_icon_state(state: TrayIconState) {
+    // Update state tracking
+    {
+        let mut current_state = TRAY_STATE.write().unwrap();
+        if *current_state == state {
+            return; // No change needed
+        }
+        *current_state = state;
+    }
+
+    // Get app handle
+    let app_handle = {
+        let handle = APP_HANDLE.read().unwrap();
+        handle.clone()
+    };
+
+    if let Some(app) = app_handle {
+        // Run on main thread - required for macOS UI operations
+        let _ = app.run_on_main_thread(move || {
+            let tray_ref = TRAY.read().unwrap();
+            if let Some(tray) = tray_ref.as_ref() {
+                match state {
+                    TrayIconState::Normal => {
+                        // Use normal icon (template on macOS)
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = tray.set_icon_as_template(true);
+                        }
+                        if let Ok(icon) = Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png")) {
+                            let _ = tray.set_icon(Some(icon));
+                        }
+                    }
+                    TrayIconState::Active => {
+                        // Use active icon (colored, not template)
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = tray.set_icon_as_template(false);
+                        }
+                        if let Ok(icon) = Image::from_bytes(include_bytes!("../icons/32x32.png")) {
+                            let _ = tray.set_icon(Some(icon));
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+/// Send a system notification
+pub fn send_notification(title: &str, body: &str) {
+    let app_handle = {
+        let handle = APP_HANDLE.read().unwrap();
+        handle.clone()
+    };
+
+    if let Some(app) = app_handle {
+        // Check if notifications are enabled in settings
+        let notifications_enabled = crate::config::manager::load_config()
+            .map(|c| c.settings.show_tray_notifications)
+            .unwrap_or(true);
+
+        if notifications_enabled {
+            if let Err(e) = app.notification()
+                .builder()
+                .title(title)
+                .body(body)
+                .show()
+            {
+                eprintln!("Failed to send notification: {}", e);
+            }
+        }
+    }
 }

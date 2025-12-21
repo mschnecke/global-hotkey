@@ -71,7 +71,11 @@ pub fn load_config() -> Result<AppConfig, AppError> {
     if config_path.exists() {
         let content = fs::read_to_string(&config_path)?;
         match serde_json::from_str::<AppConfig>(&content) {
-            Ok(config) => {
+            Ok(mut config) => {
+                // Initialize built-in roles if empty
+                if config.settings.ai.roles.is_empty() {
+                    config.settings.ai.roles = crate::ai::get_builtin_roles();
+                }
                 validation::validate(&config)?;
                 return Ok(config);
             }
@@ -84,7 +88,9 @@ pub fn load_config() -> Result<AppConfig, AppError> {
     }
 
     // Return default config if no file exists
-    Ok(AppConfig::default())
+    let mut config = AppConfig::default();
+    config.settings.ai.roles = crate::ai::get_builtin_roles();
+    Ok(config)
 }
 
 /// Load configuration from backup file

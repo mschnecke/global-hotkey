@@ -25,6 +25,12 @@ pub enum AppError {
 
     #[error("Post-action error: {0}")]
     PostAction(String),
+
+    #[error("AI error: {0}")]
+    Ai(String),
+
+    #[error("Audio error: {0}")]
+    Audio(String),
 }
 
 impl From<AppError> for String {

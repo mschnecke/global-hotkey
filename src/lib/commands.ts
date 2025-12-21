@@ -3,7 +3,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import type { AppConfig, HotkeyConfig, HotkeyBinding, ProgramConfig } from './types';
+import type { AppConfig, HotkeyConfig, HotkeyBinding, ProgramConfig, AiRole } from './types';
 
 // ============================================================================
 // Configuration Commands
@@ -124,4 +124,85 @@ export async function getAutostart(): Promise<boolean> {
  */
 export async function setAutostart(enabled: boolean): Promise<void> {
   return invoke('set_autostart', { enabled });
+}
+
+// ============================================================================
+// AI Commands
+// ============================================================================
+
+/**
+ * Test an AI provider connection
+ */
+export async function testAiProvider(apiKey: string, model?: string): Promise<boolean> {
+  return invoke('test_ai_provider', { apiKey, model });
+}
+
+/**
+ * Send text to AI and get response
+ */
+export async function sendToAi(
+  apiKey: string,
+  systemPrompt: string,
+  userInput: string,
+  model?: string
+): Promise<string> {
+  return invoke('send_to_ai', { apiKey, model, systemPrompt, userInput });
+}
+
+/**
+ * Get built-in AI roles
+ */
+export async function getBuiltinRoles(): Promise<AiRole[]> {
+  return invoke('get_builtin_roles');
+}
+
+/**
+ * Save an AI role (create or update)
+ */
+export async function saveAiRole(role: AiRole): Promise<void> {
+  return invoke('save_ai_role', { role });
+}
+
+/**
+ * Delete an AI role
+ */
+export async function deleteAiRole(roleId: string): Promise<void> {
+  return invoke('delete_ai_role', { roleId });
+}
+
+// ============================================================================
+// Audio Commands
+// ============================================================================
+
+/**
+ * Start audio recording from microphone
+ */
+export async function startAudioRecording(): Promise<void> {
+  return invoke('start_audio_recording');
+}
+
+/**
+ * Stop audio recording and get WAV data as base64
+ */
+export async function stopAudioRecording(): Promise<string> {
+  return invoke('stop_audio_recording');
+}
+
+/**
+ * Check if currently recording audio
+ */
+export async function isAudioRecording(): Promise<boolean> {
+  return invoke('is_audio_recording');
+}
+
+/**
+ * Send audio to AI for transcription/processing
+ */
+export async function sendAudioToAi(
+  apiKey: string,
+  systemPrompt: string,
+  audioBase64: string,
+  model?: string
+): Promise<string> {
+  return invoke('send_audio_to_ai', { apiKey, model, systemPrompt, audioBase64 });
 }
