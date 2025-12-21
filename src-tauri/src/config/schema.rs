@@ -31,6 +31,8 @@ pub struct HotkeyConfig {
     pub enabled: bool,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub post_actions: PostActionsConfig,
 }
 
 /// Hotkey binding (modifiers + key)
@@ -65,4 +67,58 @@ impl Default for AppSettings {
             show_tray_notifications: true,
         }
     }
+}
+
+/// Trigger timing for post-actions
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum PostActionTrigger {
+    /// Execute after process exits with code 0
+    #[default]
+    OnExit,
+    /// Execute after a delay (milliseconds) from process start
+    AfterDelay { delay_ms: u64 },
+}
+
+/// Keystroke for simulation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Keystroke {
+    pub modifiers: Vec<String>,
+    pub key: String,
+}
+
+/// Types of post-actions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum PostActionType {
+    /// Simulate Ctrl+V (Cmd+V on macOS) to paste clipboard
+    PasteClipboard,
+    /// Simulate a custom keystroke combination
+    SimulateKeystroke { keystroke: Keystroke },
+    /// Wait for a specified duration before next action
+    Delay { delay_ms: u64 },
+}
+
+/// A single post-action
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostAction {
+    pub id: String,
+    pub action_type: PostActionType,
+    pub enabled: bool,
+}
+
+/// Post-action configuration for a hotkey
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PostActionsConfig {
+    /// Whether post-actions are enabled for this hotkey
+    pub enabled: bool,
+    /// When to trigger post-actions
+    #[serde(default)]
+    pub trigger: PostActionTrigger,
+    /// Ordered list of actions to execute
+    #[serde(default)]
+    pub actions: Vec<PostAction>,
 }

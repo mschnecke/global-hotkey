@@ -19,17 +19,19 @@ A lightweight, hidden desktop application that allows users to configure global 
 
 ### 2.1 Core User Stories
 
-| ID    | As a...    | I want to...                                   | So that...                                           |
-| ----- | ---------- | ---------------------------------------------- | ---------------------------------------------------- |
-| US-01 | Power user | Register a global hotkey to launch any program | I can quickly access my frequently used applications |
-| US-02 | Developer  | Launch CLI programs in hidden mode             | Terminal windows don't clutter my workspace          |
-| US-03 | User       | Edit existing hotkey configurations            | I can update paths or change key combinations        |
-| US-04 | User       | Delete hotkey configurations                   | I can remove shortcuts I no longer need              |
-| US-05 | User       | Pass arguments to launched programs            | I can customize how programs start                   |
-| US-06 | User       | Set working directory for programs             | Programs start in the correct context                |
-| US-07 | User       | Export my configurations                       | I can backup or share my setup                       |
-| US-08 | User       | Import configurations                          | I can restore or apply shared setups                 |
-| US-09 | User       | Access settings from system tray               | I can manage hotkeys without a visible window        |
+| ID    | As a...    | I want to...                                   | So that...                                            |
+| ----- | ---------- | ---------------------------------------------- | ----------------------------------------------------- |
+| US-01 | Power user | Register a global hotkey to launch any program | I can quickly access my frequently used applications  |
+| US-02 | Developer  | Launch CLI programs in hidden mode             | Terminal windows don't clutter my workspace           |
+| US-03 | User       | Edit existing hotkey configurations            | I can update paths or change key combinations         |
+| US-04 | User       | Delete hotkey configurations                   | I can remove shortcuts I no longer need               |
+| US-05 | User       | Pass arguments to launched programs            | I can customize how programs start                    |
+| US-06 | User       | Set working directory for programs             | Programs start in the correct context                 |
+| US-07 | User       | Export my configurations                       | I can backup or share my setup                        |
+| US-08 | User       | Import configurations                          | I can restore or apply shared setups                  |
+| US-09 | User       | Access settings from system tray               | I can manage hotkeys without a visible window         |
+| US-10 | Power user | Configure post-actions for hotkeys             | I can automate workflows after a program runs         |
+| US-11 | User       | Paste clipboard automatically after a process  | I can use CLI tools that copy to clipboard seamlessly |
 
 ## 3. Functional Requirements
 
@@ -81,6 +83,18 @@ A lightweight, hidden desktop application that allows users to configure global 
 | ----- | --------------------------------------------------- | ----------- |
 | FR-23 | Application shall optionally start with system boot | Should Have |
 | FR-24 | Application shall register all hotkeys on startup   | Must Have   |
+
+### 3.6 Post-Actions
+
+| ID    | Requirement                                                                       | Priority    |
+| ----- | --------------------------------------------------------------------------------- | ----------- |
+| FR-25 | System shall support configuring post-actions for each hotkey                     | Must Have   |
+| FR-26 | Post-actions shall support trigger on process exit (exit code 0)                  | Must Have   |
+| FR-27 | Post-actions shall support trigger after configurable delay                       | Must Have   |
+| FR-28 | System shall support PasteClipboard action (simulate Ctrl/Cmd+V)                  | Must Have   |
+| FR-29 | System shall support SimulateKeystroke action with configurable key and modifiers | Must Have   |
+| FR-30 | System shall support Delay action for chaining multiple actions                   | Should Have |
+| FR-31 | Post-actions shall be chainable (multiple actions in sequence)                    | Should Have |
 
 ## 4. Non-Functional Requirements
 
@@ -142,7 +156,12 @@ A lightweight, hidden desktop application that allows users to configure global 
 │  │   Global    │  │   Process   │  │   Config        │  │
 │  │   Hotkey    │  │   Spawner   │  │   Manager       │  │
 │  │   Manager   │  │             │  │                 │  │
-│  └─────────────┘  └─────────────┘  └─────────────────┘  │
+│  └──────┬──────┘  └──────┬──────┘  └─────────────────┘  │
+│         │                │                              │
+│         │         ┌──────▼──────┐                       │
+│         └────────►│ Post-Action │                       │
+│                   │  Executor   │                       │
+│                   └─────────────┘                       │
 └─────────────────────┬───────────────────────────────────┘
                       │ IPC Commands
 ┌─────────────────────▼───────────────────────────────────┐
@@ -161,6 +180,7 @@ A lightweight, hidden desktop application that allows users to configure global 
 - **Global Hotkey Manager**: Register/unregister system-wide hotkeys, handle key events
 - **Process Spawner**: Launch programs with arguments, handle hidden mode for CLI apps
 - **Config Manager**: Load/save/validate configuration, handle import/export
+- **Post-Action Executor**: Execute post-actions after process completion, keystroke simulation
 
 #### Svelte Frontend (src/)
 
@@ -189,6 +209,17 @@ A lightweight, hidden desktop application that allows users to configure global 
         "workingDirectory": "C:\\Projects",
         "hidden": false
       },
+      "postActions": {
+        "enabled": true,
+        "trigger": { "type": "onExit" },
+        "actions": [
+          {
+            "id": "action-uuid",
+            "actionType": { "type": "pasteClipboard" },
+            "enabled": true
+          }
+        ]
+      },
       "enabled": true,
       "createdAt": "2024-01-15T10:30:00Z",
       "updatedAt": "2024-01-15T10:30:00Z"
@@ -209,13 +240,32 @@ A lightweight, hidden desktop application that allows users to configure global 
 | name                     | string        | Yes      | User-friendly display name                |
 | hotkey.modifiers         | string[]      | Yes      | Modifier keys: ctrl, alt, shift, meta/cmd |
 | hotkey.key               | string        | Yes      | Primary key (a-z, 0-9, F1-F12, etc.)      |
-| program.path             | string        | Yes      | Absolute path to executable               |
+| program.path             | string        | Yes      | Absolute path or program name in PATH     |
 | program.arguments        | string[]      | No       | Command-line arguments                    |
 | program.workingDirectory | string        | No       | Working directory for process             |
 | program.hidden           | boolean       | No       | Launch in hidden mode (default: false)    |
+| postActions              | object        | No       | Post-action configuration (see 6.3)       |
 | enabled                  | boolean       | Yes      | Whether hotkey is active                  |
 | createdAt                | string (ISO)  | Yes      | Creation timestamp                        |
 | updatedAt                | string (ISO)  | Yes      | Last modification timestamp               |
+
+### 6.3 Post-Actions Object Fields
+
+| Field                       | Type    | Required | Description                           |
+| --------------------------- | ------- | -------- | ------------------------------------- |
+| postActions.enabled         | boolean | Yes      | Whether post-actions are active       |
+| postActions.trigger         | object  | Yes      | Trigger configuration                 |
+| postActions.trigger.type    | string  | Yes      | "onExit" or "afterDelay"              |
+| postActions.trigger.delayMs | number  | No       | Delay in ms (required for afterDelay) |
+| postActions.actions         | array   | Yes      | List of actions to execute            |
+
+### 6.4 Post-Action Types
+
+| Type              | Fields                             | Description                              |
+| ----------------- | ---------------------------------- | ---------------------------------------- |
+| pasteClipboard    | -                                  | Simulate Ctrl+V (Windows) or Cmd+V (Mac) |
+| simulateKeystroke | keystroke.key, keystroke.modifiers | Simulate custom key combination          |
+| delay             | delayMs                            | Wait before next action                  |
 
 ## 7. UI/UX Specifications
 
@@ -492,3 +542,4 @@ brew install --cask global-hotkey
 | 1.3     | 2024-12-12 | -      | Removed Apple Intel support (Apple Silicon only)         |
 | 1.4     | 2024-12-12 | -      | Added Git Hooks (Husky + lint-staged)                    |
 | 1.5     | 2025-12-15 | -      | Updated config storage location to ~/.global-hotkey.json |
+| 1.6     | 2025-12-21 | -      | Added Post-Actions feature (US-10/11, FR-25-31, 6.3-6.4) |

@@ -5,6 +5,7 @@
 mod config;
 mod error;
 mod hotkey;
+mod postaction;
 mod process;
 mod tray;
 

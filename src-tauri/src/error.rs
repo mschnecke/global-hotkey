@@ -22,6 +22,9 @@ pub enum AppError {
 
     #[error("Tray error: {0}")]
     Tray(String),
+
+    #[error("Post-action error: {0}")]
+    PostAction(String),
 }
 
 impl From<AppError> for String {

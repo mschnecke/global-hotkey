@@ -77,15 +77,31 @@ fn handle_event(event: GlobalHotKeyEvent) {
     for (_, (hotkey_id, _, config)) in registry.iter() {
         if *hotkey_id == event.id {
             let program_config = config.program.clone();
+            let post_actions = config.post_actions.clone();
             let hotkey_name = config.name.clone();
 
             // Spawn in a separate thread to avoid blocking the event loop
             std::thread::spawn(move || {
-                if let Err(e) = process::spawner::launch(&program_config) {
-                    eprintln!(
-                        "Failed to launch program for hotkey '{}': {}",
-                        hotkey_name, e
-                    );
+                // Check if post-actions are enabled
+                if post_actions.enabled && !post_actions.actions.is_empty() {
+                    if let Err(e) = crate::postaction::execute_with_post_actions(
+                        &program_config,
+                        &post_actions,
+                        &hotkey_name,
+                    ) {
+                        eprintln!(
+                            "Failed to execute hotkey '{}' with post-actions: {}",
+                            hotkey_name, e
+                        );
+                    }
+                } else {
+                    // No post-actions, just launch normally
+                    if let Err(e) = process::spawner::launch(&program_config) {
+                        eprintln!(
+                            "Failed to launch program for hotkey '{}': {}",
+                            hotkey_name, e
+                        );
+                    }
                 }
             });
             break;

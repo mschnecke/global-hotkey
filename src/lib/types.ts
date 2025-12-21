@@ -22,6 +22,7 @@ export interface HotkeyConfig {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+  postActions?: PostActionsConfig;
 }
 
 export interface AppSettings {
@@ -33,4 +34,29 @@ export interface AppConfig {
   version: string;
   hotkeys: HotkeyConfig[];
   settings: AppSettings;
+}
+
+// Post-Action Types
+export type PostActionTrigger = { type: 'onExit' } | { type: 'afterDelay'; delayMs: number };
+
+export interface Keystroke {
+  modifiers: string[];
+  key: string;
+}
+
+export type PostActionType =
+  | { type: 'pasteClipboard' }
+  | { type: 'simulateKeystroke'; keystroke: Keystroke }
+  | { type: 'delay'; delayMs: number };
+
+export interface PostAction {
+  id: string;
+  actionType: PostActionType;
+  enabled: boolean;
+}
+
+export interface PostActionsConfig {
+  enabled: boolean;
+  trigger: PostActionTrigger;
+  actions: PostAction[];
 }

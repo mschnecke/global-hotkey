@@ -7,6 +7,10 @@ A cross-platform desktop application for launching programs via configurable glo
 - **Global Hotkeys**: Register system-wide keyboard shortcuts that work from any application
 - **Program Launcher**: Launch any executable with custom arguments and working directory
 - **PATH Support**: Enter program names directly (e.g., `git`, `code`) without full paths
+- **Post-Actions**: Execute actions after a triggered process completes:
+  - Paste clipboard content automatically
+  - Simulate custom keystrokes with modifiers
+  - Chain multiple actions with configurable delays
 - **System Tray**: Runs quietly in the background with quick access via tray menu
 - **Hidden Mode**: Launch CLI applications without visible terminal windows
 - **Import/Export**: Backup and restore your hotkey configurations
@@ -43,9 +47,23 @@ brew install --cask global-hotkey
 3. Click **Add Hotkey** to create a new shortcut:
    - Enter a name for the hotkey
    - Click the hotkey recorder and press your desired key combination
-   - Browse to select the program to launch
+   - Browse to select the program to launch, or enter a program name from your PATH
    - Optionally set arguments, working directory, or hidden mode
+   - Configure **Post-Actions** to run after the process completes (e.g., paste clipboard)
 4. Click **Save** - the hotkey is now active!
+
+### Post-Actions
+
+Post-actions allow automation workflows where a hotkey triggers a program and then performs follow-up actions:
+
+1. **OnExit**: Wait for the process to exit successfully (exit code 0), then run actions
+2. **AfterDelay**: Run actions after a configurable delay from process launch
+
+Available action types:
+
+- **Paste Clipboard**: Simulate Ctrl+V (or Cmd+V on macOS)
+- **Simulate Keystroke**: Send custom key combinations with modifiers
+- **Delay**: Wait a specified time before the next action
 
 ### Configuration Storage
 
@@ -131,7 +149,8 @@ global-hotkey/
 │   │   ├── HotkeyDialog.svelte
 │   │   ├── HotkeyRecorder.svelte
 │   │   ├── FileBrowser.svelte
-│   │   └── ConfirmDialog.svelte
+│   │   ├── ConfirmDialog.svelte
+│   │   └── PostActionEditor.svelte
 │   ├── lib/                  # Utilities & types
 │   └── stores/               # Svelte stores
 ├── src-tauri/                # Rust backend
@@ -139,6 +158,7 @@ global-hotkey/
 │       ├── config/           # Configuration management
 │       ├── hotkey/           # Global hotkey handling
 │       ├── process/          # Process spawning
+│       ├── postaction/       # Post-action execution
 │       └── tray.rs           # System tray
 ├── packages/                 # Distribution packages
 │   ├── chocolatey/           # Windows package
@@ -149,6 +169,7 @@ global-hotkey/
 ## Documentation
 
 - [Product Requirements Document](docs/PRD.md)
+- [Post-Actions Feature Specification](docs/post-action-prd.md)
 
 ## License
 

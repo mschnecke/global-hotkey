@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { HotkeyConfig, HotkeyBinding, ProgramConfig } from '$lib/types';
+  import type { HotkeyConfig, HotkeyBinding, ProgramConfig, PostActionsConfig } from '$lib/types';
   import HotkeyRecorder from './HotkeyRecorder.svelte';
   import FileBrowser from './FileBrowser.svelte';
+  import PostActionEditor from './PostActionEditor.svelte';
   import { checkConflict, checkSystemConflict, validateProgramPath } from '$lib/commands';
 
   interface Props {
@@ -21,6 +22,11 @@
   let workingDir = $state('');
   let hidden = $state(false);
   let enabled = $state(true);
+  let postActions = $state<PostActionsConfig>({
+    enabled: false,
+    trigger: { type: 'onExit' },
+    actions: [],
+  });
 
   // Validation state
   let errors = $state<Record<string, string>>({});
@@ -41,6 +47,11 @@
         workingDir = hotkey.program.workingDirectory || '';
         hidden = hotkey.program.hidden;
         enabled = hotkey.enabled;
+        postActions = hotkey.postActions || {
+          enabled: false,
+          trigger: { type: 'onExit' },
+          actions: [],
+        };
       } else {
         name = '';
         hotkeyBinding = { modifiers: [], key: '' };
@@ -49,6 +60,7 @@
         workingDir = '';
         hidden = false;
         enabled = true;
+        postActions = { enabled: false, trigger: { type: 'onExit' }, actions: [] };
       }
       errors = {};
     }
@@ -120,6 +132,7 @@
         hotkey: hotkeyBinding,
         program,
         enabled,
+        postActions,
       });
     } finally {
       saving = false;
@@ -146,7 +159,7 @@
   <!-- Dialog -->
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div
-      class="w-full max-w-lg animate-slide-up rounded-lg bg-white shadow-xl"
+      class="w-full max-w-lg max-h-[90vh] flex flex-col animate-slide-up rounded-lg bg-white shadow-xl"
       role="dialog"
       aria-modal="true"
       aria-labelledby="dialog-title"
@@ -176,7 +189,7 @@
           e.preventDefault();
           handleSubmit();
         }}
-        class="px-6 py-4"
+        class="px-6 py-4 overflow-y-auto flex-1"
       >
         <div class="space-y-4">
           <!-- Name -->
@@ -263,6 +276,9 @@
               <span class="ml-2 text-sm text-gray-700">Enabled</span>
             </label>
           </div>
+
+          <!-- Post-Actions -->
+          <PostActionEditor value={postActions} onChange={(config) => (postActions = config)} />
         </div>
 
         <!-- Footer -->
