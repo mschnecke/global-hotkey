@@ -50,6 +50,7 @@ global-hotkey/
 │       ├── config/        # Configuration management
 │       ├── hotkey/        # Global hotkey handling
 │       ├── process/       # Process spawning
+│       ├── postaction/    # Post-action execution (keystroke simulation)
 │       └── tray.rs        # System tray
 ├── .husky/                # Git hooks
 └── docs/                  # Documentation
@@ -64,6 +65,7 @@ All core features are complete:
 - Global hotkey registration and management
 - Program launching (GUI and hidden CLI mode)
 - PATH-based program resolution (enter `git`, `code`, etc. without full paths)
+- Post-actions: clipboard paste, keystroke simulation, and delay actions after process completion
 - System tray integration with dynamic theme-aware icons
 - Configuration import/export with automatic backups
 - Cross-platform support (Windows 10/11, macOS 10.15+)
