@@ -179,7 +179,6 @@ pub struct ProgramConfig {
     pub hidden: bool,
 }
 
-
 /// Trigger timing for post-actions
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", tag = "type")]

@@ -83,9 +83,8 @@ fn migrate_from_legacy() -> Result<bool, AppError> {
 
     // Read the legacy config
     let content = fs::read_to_string(&legacy_path)?;
-    let legacy: LegacyAppConfig = serde_json::from_str(&content).map_err(|e| {
-        AppError::Config(format!("Failed to parse legacy config: {}", e))
-    })?;
+    let legacy: LegacyAppConfig = serde_json::from_str(&content)
+        .map_err(|e| AppError::Config(format!("Failed to parse legacy config: {}", e)))?;
 
     // Create new settings
     let settings = AppSettings {
@@ -127,7 +126,10 @@ fn migrate_from_legacy() -> Result<bool, AppError> {
         eprintln!("Legacy backup preserved at: {:?}", legacy_backup);
     }
 
-    eprintln!("Migration complete. New config at: {:?}", get_config_path()?);
+    eprintln!(
+        "Migration complete. New config at: {:?}",
+        get_config_path()?
+    );
     Ok(true)
 }
 
