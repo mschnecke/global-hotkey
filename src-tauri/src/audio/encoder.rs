@@ -48,31 +48,29 @@ pub fn encode_to_opus(
 
     // Frame size: 20ms at target sample rate
     let frame_size = (target_rate as usize) / 50; // 20ms frames
-    let mut opus_output = Vec::new();
 
-    // Encode frames
+    // Encode each frame separately (required for proper Ogg/Opus format)
+    let mut encoded_frames: Vec<Vec<u8>> = Vec::new();
+
     for chunk in samples_i16.chunks(frame_size * channels as usize) {
-        if chunk.len() < frame_size * channels as usize {
+        let frame_to_encode = if chunk.len() < frame_size * channels as usize {
             // Pad last frame if needed
             let mut padded = chunk.to_vec();
             padded.resize(frame_size * channels as usize, 0);
-
-            let mut buffer = vec![0u8; 4000];
-            let encoded_len = encoder
-                .encode(&padded, &mut buffer)
-                .map_err(|e| AppError::Audio(format!("Opus encoding failed: {}", e)))?;
-            opus_output.extend_from_slice(&buffer[..encoded_len]);
+            padded
         } else {
-            let mut buffer = vec![0u8; 4000];
-            let encoded_len = encoder
-                .encode(chunk, &mut buffer)
-                .map_err(|e| AppError::Audio(format!("Opus encoding failed: {}", e)))?;
-            opus_output.extend_from_slice(&buffer[..encoded_len]);
-        }
+            chunk.to_vec()
+        };
+
+        let mut buffer = vec![0u8; 4000];
+        let encoded_len = encoder
+            .encode(&frame_to_encode, &mut buffer)
+            .map_err(|e| AppError::Audio(format!("Opus encoding failed: {}", e)))?;
+        encoded_frames.push(buffer[..encoded_len].to_vec());
     }
 
-    // Wrap in Ogg container
-    let ogg_data = wrap_in_ogg(&opus_output, target_rate, channels)?;
+    // Wrap in Ogg container with proper per-frame packets
+    let ogg_data = wrap_in_ogg(&encoded_frames, target_rate, channels, frame_size)?;
 
     Ok(ogg_data)
 }
@@ -116,8 +114,13 @@ fn resample_for_opus(samples: &[f32], sample_rate: u32) -> (Vec<f32>, u32) {
     (resampled, target_rate)
 }
 
-/// Wrap Opus frames in an Ogg container
-fn wrap_in_ogg(opus_data: &[u8], sample_rate: u32, channels: u16) -> Result<Vec<u8>, AppError> {
+/// Wrap Opus frames in an Ogg container (each frame as a separate packet)
+fn wrap_in_ogg(
+    encoded_frames: &[Vec<u8>],
+    sample_rate: u32,
+    channels: u16,
+    frame_size: usize,
+) -> Result<Vec<u8>, AppError> {
     use ogg::writing::PacketWriter;
 
     let mut output = Vec::new();
@@ -125,19 +128,25 @@ fn wrap_in_ogg(opus_data: &[u8], sample_rate: u32, channels: u16) -> Result<Vec<
 
     {
         let mut writer = PacketWriter::new(&mut cursor);
+        let serial = 0u32;
 
         // Write Opus identification header
         let mut id_header = Vec::new();
         id_header.extend_from_slice(b"OpusHead");
         id_header.push(1); // Version
         id_header.push(channels as u8); // Channel count
-        id_header.extend_from_slice(&0u16.to_le_bytes()); // Pre-skip
+        id_header.extend_from_slice(&312u16.to_le_bytes()); // Pre-skip (standard for Opus)
         id_header.extend_from_slice(&sample_rate.to_le_bytes()); // Input sample rate
         id_header.extend_from_slice(&0i16.to_le_bytes()); // Output gain
         id_header.push(0); // Channel mapping family
 
         writer
-            .write_packet(id_header, 0, ogg::writing::PacketWriteEndInfo::EndPage, 0)
+            .write_packet(
+                id_header,
+                serial,
+                ogg::writing::PacketWriteEndInfo::EndPage,
+                0,
+            )
             .map_err(|e| AppError::Audio(format!("Failed to write Opus header: {}", e)))?;
 
         // Write Opus comment header
@@ -151,21 +160,31 @@ fn wrap_in_ogg(opus_data: &[u8], sample_rate: u32, channels: u16) -> Result<Vec<
         writer
             .write_packet(
                 comment_header,
-                0,
+                serial,
                 ogg::writing::PacketWriteEndInfo::EndPage,
                 0,
             )
             .map_err(|e| AppError::Audio(format!("Failed to write Opus comment: {}", e)))?;
 
-        // Write audio data as a single packet
-        writer
-            .write_packet(
-                opus_data.to_vec(),
-                0,
-                ogg::writing::PacketWriteEndInfo::EndStream,
-                0,
-            )
-            .map_err(|e| AppError::Audio(format!("Failed to write Opus data: {}", e)))?;
+        // Write each audio frame as a separate packet with proper granule position
+        // Granule position = cumulative samples at 48kHz (Opus internal rate)
+        let samples_per_frame = frame_size as u64; // samples per frame at encoding rate
+        let granule_increment = samples_per_frame * 48000 / sample_rate as u64; // convert to 48kHz
+
+        for (i, frame) in encoded_frames.iter().enumerate() {
+            let granule_pos = (i as u64 + 1) * granule_increment;
+            let is_last = i == encoded_frames.len() - 1;
+
+            let end_info = if is_last {
+                ogg::writing::PacketWriteEndInfo::EndStream
+            } else {
+                ogg::writing::PacketWriteEndInfo::NormalPacket
+            };
+
+            writer
+                .write_packet(frame.clone(), serial, end_info, granule_pos)
+                .map_err(|e| AppError::Audio(format!("Failed to write Opus frame: {}", e)))?;
+        }
     }
 
     Ok(output)

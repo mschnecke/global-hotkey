@@ -18,9 +18,10 @@
   import HotkeyDialog from '$components/HotkeyDialog.svelte';
   import ConfirmDialog from '$components/ConfirmDialog.svelte';
   import AiSettingsComponent from '$components/AiSettings.svelte';
+  import GeneralSettings from '$components/GeneralSettings.svelte';
 
   // Tab state
-  type Tab = 'hotkeys' | 'ai';
+  type Tab = 'hotkeys' | 'ai' | 'general';
   let activeTab = $state<Tab>('hotkeys');
 
   // AI Settings state
@@ -197,6 +198,15 @@
           >
             AI Settings
           </button>
+          <button
+            onclick={() => (activeTab = 'general')}
+            class="whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium {activeTab ===
+            'general'
+              ? 'border-primary-500 text-primary-600'
+              : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
+          >
+            General
+          </button>
         </nav>
       </div>
     </div>
@@ -282,6 +292,10 @@
     {:else if activeTab === 'ai'}
       <div class="rounded-lg bg-white p-6 shadow">
         <AiSettingsComponent value={aiSettings} onChange={handleAiSettingsChange} />
+      </div>
+    {:else if activeTab === 'general'}
+      <div class="rounded-lg bg-white p-6 shadow">
+        <GeneralSettings />
       </div>
     {/if}
   </div>

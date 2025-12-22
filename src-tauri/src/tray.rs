@@ -523,18 +523,20 @@ pub fn set_icon_state(state: TrayIconState) {
                 match state {
                     TrayIconState::Normal => {
                         // Use normal icon (template on macOS)
-                        #[cfg(target_os = "macos")]
-                        {
-                            let _ = tray.set_icon_as_template(true);
-                        }
+                        // Must set icon FIRST, then set as template
                         if let Ok(icon) =
                             Image::from_bytes(include_bytes!("../icons/tray-icon@2x.png"))
                         {
                             let _ = tray.set_icon(Some(icon));
                         }
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = tray.set_icon_as_template(true);
+                        }
                     }
                     TrayIconState::Active => {
                         // Use active icon (colored, not template)
+                        // Must set template mode FIRST, then set icon
                         #[cfg(target_os = "macos")]
                         {
                             let _ = tray.set_icon_as_template(false);
