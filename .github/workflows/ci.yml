@@ -101,6 +101,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-latest'
+        run: brew install opus
+
       - name: Build frontend
         run: npm run build
 

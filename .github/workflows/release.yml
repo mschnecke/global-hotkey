@@ -199,6 +199,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Install macOS dependencies
+        if: matrix.platform == 'macos-latest'
+        run: brew install opus
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
