@@ -1,15 +1,27 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { open } from '@tauri-apps/plugin-dialog';
   import { getVersion } from '@tauri-apps/api/app';
-  import { getAutostart, setAutostart } from '$lib/commands';
+  import {
+    getAutostart,
+    setAutostart,
+    getConfigLocation,
+    changeConfigLocation,
+  } from '$lib/commands';
 
   let launchAtStartup = $state(false);
   let loading = $state(true);
   let version = $state('');
+  let configLocationPath = $state('');
+  let changingLocation = $state(false);
 
   onMount(async () => {
     try {
-      [launchAtStartup, version] = await Promise.all([getAutostart(), getVersion()]);
+      [launchAtStartup, version, configLocationPath] = await Promise.all([
+        getAutostart(),
+        getVersion(),
+        getConfigLocation(),
+      ]);
     } catch (e) {
       console.error('Failed to load settings:', e);
     } finally {
@@ -24,6 +36,36 @@
       launchAtStartup = newValue;
     } catch (e) {
       console.error('Failed to toggle autostart:', e);
+    }
+  }
+
+  async function handleChangeConfigLocation() {
+    try {
+      const path = await open({
+        directory: true,
+        title: 'Select Configuration Location',
+      });
+      if (path && typeof path === 'string') {
+        changingLocation = true;
+        await changeConfigLocation(path);
+        configLocationPath = await getConfigLocation();
+      }
+    } catch (e) {
+      console.error('Failed to change config location:', e);
+    } finally {
+      changingLocation = false;
+    }
+  }
+
+  async function handleResetConfigLocation() {
+    try {
+      changingLocation = true;
+      await changeConfigLocation(undefined);
+      configLocationPath = await getConfigLocation();
+    } catch (e) {
+      console.error('Failed to reset config location:', e);
+    } finally {
+      changingLocation = false;
     }
   }
 </script>
@@ -55,6 +97,35 @@
             : ''}"
         ></span>
       </button>
+    </div>
+
+    <!-- Config Location -->
+    <div class="pt-4 border-t border-gray-100">
+      <div class="text-sm font-medium text-gray-700">Configuration location</div>
+      <div class="text-xs text-gray-500 mb-2">Where hotkeys and AI settings are stored</div>
+      <div class="flex items-center gap-2">
+        <input
+          type="text"
+          readonly
+          value={configLocationPath}
+          class="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-600"
+        />
+        <button
+          onclick={handleChangeConfigLocation}
+          disabled={loading || changingLocation}
+          class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+        >
+          {changingLocation ? 'Changing...' : 'Change'}
+        </button>
+        <button
+          onclick={handleResetConfigLocation}
+          disabled={loading || changingLocation}
+          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          title="Reset to default location"
+        >
+          Reset
+        </button>
+      </div>
     </div>
   </div>
 

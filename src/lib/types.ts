@@ -30,16 +30,31 @@ export interface HotkeyConfig {
   postActions?: PostActionsConfig;
 }
 
+/**
+ * Application settings stored in fixed location (~/.global-hotkey-settings.json)
+ */
 export interface AppSettings {
   startWithSystem: boolean;
   showTrayNotifications: boolean;
-  ai?: AiSettings;
+  /** Custom config location. If undefined, uses default (~/.global-hotkey/) */
+  configLocation?: string;
 }
 
+/**
+ * Main configuration stored in configurable location
+ */
 export interface AppConfig {
   version: string;
   hotkeys: HotkeyConfig[];
+  ai: AiSettings;
+}
+
+/**
+ * Combined settings and config for full app state
+ */
+export interface FullConfig {
   settings: AppSettings;
+  config: AppConfig;
 }
 
 // Post-Action Types

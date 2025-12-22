@@ -19,7 +19,7 @@ static AUDIO_RECORDER: Lazy<Mutex<Option<audio::AudioRecorderHandle>>> =
     Lazy::new(|| Mutex::new(None));
 
 pub use config::schema::{
-    AppConfig, AppSettings, HotkeyAction, HotkeyBinding, HotkeyConfig, ProgramConfig,
+    AppConfig, AppSettings, FullConfig, HotkeyAction, HotkeyBinding, HotkeyConfig, ProgramConfig,
 };
 pub use error::AppError;
 
@@ -27,16 +27,52 @@ pub use error::AppError;
 // Tauri Commands - Configuration
 // ============================================================================
 
-/// Get the current application configuration
+/// Get the full configuration (settings + config)
+#[tauri::command]
+async fn get_full_config() -> Result<FullConfig, String> {
+    config::manager::load_full_config().map_err(|e| e.to_string())
+}
+
+/// Save the full configuration (settings + config)
+#[tauri::command]
+async fn save_full_config(full_config: FullConfig) -> Result<(), String> {
+    config::manager::save_full_config(&full_config).map_err(|e| e.to_string())
+}
+
+/// Get the current application configuration (hotkeys + AI)
 #[tauri::command]
 async fn get_config() -> Result<AppConfig, String> {
     config::manager::load_config().map_err(|e| e.to_string())
 }
 
-/// Save the application configuration
+/// Save the application configuration (hotkeys + AI)
 #[tauri::command]
 async fn save_config(config: AppConfig) -> Result<(), String> {
     config::manager::save_config(&config).map_err(|e| e.to_string())
+}
+
+/// Get the current application settings
+#[tauri::command]
+async fn get_settings() -> Result<AppSettings, String> {
+    config::manager::load_settings().map_err(|e| e.to_string())
+}
+
+/// Save the application settings
+#[tauri::command]
+async fn save_settings(settings: AppSettings) -> Result<(), String> {
+    config::manager::save_settings(&settings).map_err(|e| e.to_string())
+}
+
+/// Get the current config location path
+#[tauri::command]
+async fn get_config_location() -> Result<String, String> {
+    config::manager::get_config_location().map_err(|e| e.to_string())
+}
+
+/// Change the config location (copies existing config to new location)
+#[tauri::command]
+async fn change_config_location(new_path: Option<String>) -> Result<(), String> {
+    config::manager::change_config_location(new_path).map_err(|e| e.to_string())
 }
 
 /// Export configuration to a user-specified file
@@ -204,22 +240,17 @@ async fn save_ai_role(role: config::schema::AiRole) -> Result<(), String> {
     let mut app_config = config::manager::load_config().map_err(|e| e.to_string())?;
 
     // Find existing role index
-    let existing_idx = app_config
-        .settings
-        .ai
-        .roles
-        .iter()
-        .position(|r| r.id == role.id);
+    let existing_idx = app_config.ai.roles.iter().position(|r| r.id == role.id);
 
     if let Some(idx) = existing_idx {
         // Update existing role (only if not builtin)
-        if app_config.settings.ai.roles[idx].is_builtin {
+        if app_config.ai.roles[idx].is_builtin {
             return Err("Cannot modify built-in roles".to_string());
         }
-        app_config.settings.ai.roles[idx] = role;
+        app_config.ai.roles[idx] = role;
     } else {
         // Add new role
-        app_config.settings.ai.roles.push(role);
+        app_config.ai.roles.push(role);
     }
 
     config::manager::save_config(&app_config).map_err(|e| e.to_string())
@@ -231,19 +262,14 @@ async fn delete_ai_role(role_id: String) -> Result<(), String> {
     let mut app_config = config::manager::load_config().map_err(|e| e.to_string())?;
 
     // Find the role
-    let role_idx = app_config
-        .settings
-        .ai
-        .roles
-        .iter()
-        .position(|r| r.id == role_id);
+    let role_idx = app_config.ai.roles.iter().position(|r| r.id == role_id);
 
     if let Some(idx) = role_idx {
         // Check if it's a built-in role
-        if app_config.settings.ai.roles[idx].is_builtin {
+        if app_config.ai.roles[idx].is_builtin {
             return Err("Cannot delete built-in roles".to_string());
         }
-        app_config.settings.ai.roles.remove(idx);
+        app_config.ai.roles.remove(idx);
         config::manager::save_config(&app_config).map_err(|e| e.to_string())
     } else {
         Err("Role not found".to_string())
@@ -419,8 +445,14 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             // Config commands
+            get_full_config,
+            save_full_config,
             get_config,
             save_config,
+            get_settings,
+            save_settings,
+            get_config_location,
+            change_config_location,
             export_config,
             import_config,
             // Hotkey commands

@@ -3,24 +3,74 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import type { AppConfig, HotkeyConfig, HotkeyBinding, ProgramConfig, AiRole } from './types';
+import type {
+  AppConfig,
+  AppSettings,
+  FullConfig,
+  HotkeyConfig,
+  HotkeyBinding,
+  ProgramConfig,
+  AiRole,
+} from './types';
 
 // ============================================================================
 // Configuration Commands
 // ============================================================================
 
 /**
- * Get the current application configuration
+ * Get the full configuration (settings + config)
+ */
+export async function getFullConfig(): Promise<FullConfig> {
+  return invoke<FullConfig>('get_full_config');
+}
+
+/**
+ * Save the full configuration (settings + config)
+ */
+export async function saveFullConfig(fullConfig: FullConfig): Promise<void> {
+  return invoke('save_full_config', { fullConfig });
+}
+
+/**
+ * Get the current application configuration (hotkeys + AI)
  */
 export async function getConfig(): Promise<AppConfig> {
   return invoke<AppConfig>('get_config');
 }
 
 /**
- * Save the application configuration
+ * Save the application configuration (hotkeys + AI)
  */
 export async function saveConfig(config: AppConfig): Promise<void> {
   return invoke('save_config', { config });
+}
+
+/**
+ * Get the current application settings
+ */
+export async function getSettings(): Promise<AppSettings> {
+  return invoke<AppSettings>('get_settings');
+}
+
+/**
+ * Save the application settings
+ */
+export async function saveSettings(settings: AppSettings): Promise<void> {
+  return invoke('save_settings', { settings });
+}
+
+/**
+ * Get the current config location path
+ */
+export async function getConfigLocation(): Promise<string> {
+  return invoke<string>('get_config_location');
+}
+
+/**
+ * Change the config location (copies existing config to new location)
+ */
+export async function changeConfigLocation(newPath?: string): Promise<void> {
+  return invoke('change_config_location', { newPath });
 }
 
 /**

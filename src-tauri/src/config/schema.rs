@@ -1,13 +1,41 @@
 //! Configuration data structures
+//!
+//! The configuration is split into two files:
+//! 1. Settings file (`~/.global-hotkey-settings.json`) - App preferences and config location
+//! 2. Config file (configurable, default `~/.global-hotkey/config.json`) - Hotkeys and AI settings
 
 use serde::{Deserialize, Serialize};
 
-/// Main application configuration
+/// Application settings stored in a fixed location (~/.global-hotkey-settings.json)
+/// Contains app preferences and the location of the main config file
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSettings {
+    pub start_with_system: bool,
+    pub show_tray_notifications: bool,
+    /// Custom config location. If None, uses default (~/.global-hotkey/)
+    #[serde(default)]
+    pub config_location: Option<String>,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            start_with_system: false,
+            show_tray_notifications: true,
+            config_location: None,
+        }
+    }
+}
+
+/// Main configuration stored in a configurable location
+/// Contains hotkeys and AI settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub version: String,
     pub hotkeys: Vec<HotkeyConfig>,
-    pub settings: AppSettings,
+    #[serde(default)]
+    pub ai: AiSettings,
 }
 
 impl Default for AppConfig {
@@ -15,9 +43,38 @@ impl Default for AppConfig {
         Self {
             version: "1.0.0".to_string(),
             hotkeys: Vec::new(),
-            settings: AppSettings::default(),
+            ai: AiSettings::default(),
         }
     }
+}
+
+/// Combined settings and config for API responses
+/// This provides a unified view for the frontend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FullConfig {
+    /// App settings (from fixed location)
+    pub settings: AppSettings,
+    /// Main config (from configurable location)
+    pub config: AppConfig,
+}
+
+/// Legacy config format for migration
+#[derive(Debug, Clone, Deserialize)]
+pub struct LegacyAppConfig {
+    pub version: String,
+    pub hotkeys: Vec<HotkeyConfig>,
+    pub settings: LegacyAppSettings,
+}
+
+/// Legacy settings format for migration
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyAppSettings {
+    pub start_with_system: bool,
+    pub show_tray_notifications: bool,
+    #[serde(default)]
+    pub ai: AiSettings,
 }
 
 /// Main action type for a hotkey
@@ -122,25 +179,6 @@ pub struct ProgramConfig {
     pub hidden: bool,
 }
 
-/// Application settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AppSettings {
-    pub start_with_system: bool,
-    pub show_tray_notifications: bool,
-    #[serde(default)]
-    pub ai: AiSettings,
-}
-
-impl Default for AppSettings {
-    fn default() -> Self {
-        Self {
-            start_with_system: false,
-            show_tray_notifications: true,
-            ai: AiSettings::default(),
-        }
-    }
-}
 
 /// Trigger timing for post-actions
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

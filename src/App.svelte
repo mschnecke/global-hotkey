@@ -41,8 +41,8 @@
 
     // Load AI settings
     getConfig().then((config) => {
-      if (config.settings.ai) {
-        aiSettings = config.settings.ai;
+      if (config.ai) {
+        aiSettings = config.ai;
       }
     });
 
@@ -143,7 +143,7 @@
     aiSettings = newSettings;
     try {
       const config = await getConfig();
-      config.settings.ai = newSettings;
+      config.ai = newSettings;
       await saveConfig(config);
     } catch (e) {
       console.error('Failed to save AI settings:', e);

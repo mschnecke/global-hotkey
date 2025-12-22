@@ -177,7 +177,7 @@ fn execute_clipboard_ai_action(role_id: &str) -> Result<(), AppError> {
 
 fn execute_clipboard_ai_action_inner(role_id: &str) -> Result<(), AppError> {
     let config = crate::config::manager::load_config()?;
-    let ai_settings = &config.settings.ai;
+    let ai_settings = &config.ai;
 
     let provider = ai_settings
         .providers
@@ -303,7 +303,7 @@ fn process_audio_recording(
 
     // Load config and find role
     let config = crate::config::manager::load_config()?;
-    let ai_settings = &config.settings.ai;
+    let ai_settings = &config.ai;
 
     let provider = ai_settings
         .providers

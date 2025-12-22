@@ -560,8 +560,8 @@ pub fn send_notification(title: &str, body: &str) {
 
     if let Some(app) = app_handle {
         // Check if notifications are enabled in settings
-        let notifications_enabled = crate::config::manager::load_config()
-            .map(|c| c.settings.show_tray_notifications)
+        let notifications_enabled = crate::config::manager::load_settings()
+            .map(|s| s.show_tray_notifications)
             .unwrap_or(true);
 
         if notifications_enabled {

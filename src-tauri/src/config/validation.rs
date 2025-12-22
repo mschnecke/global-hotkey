@@ -4,8 +4,8 @@ use crate::error::AppError;
 
 use super::schema::{AppConfig, HotkeyAction};
 
-/// Validate the entire configuration
-pub fn validate(config: &AppConfig) -> Result<(), AppError> {
+/// Validate the main configuration
+pub fn validate_config(config: &AppConfig) -> Result<(), AppError> {
     // Check version format
     if config.version.is_empty() {
         return Err(AppError::Config("Version cannot be empty".into()));
