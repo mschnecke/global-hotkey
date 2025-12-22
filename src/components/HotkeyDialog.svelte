@@ -329,9 +329,6 @@
                 <span class="ml-2 text-sm text-gray-700">Run hidden (no window)</span>
               </label>
             </div>
-
-            <!-- Post-Actions (only for program launch) -->
-            <PostActionEditor value={postActions} onChange={(config) => (postActions = config)} />
           {:else if actionType === 'callAi'}
             <!-- AI Role -->
             <div>
@@ -386,6 +383,9 @@
               </p>
             </div>
           {/if}
+
+          <!-- Post-Actions (available for all action types) -->
+          <PostActionEditor value={postActions} onChange={(config) => (postActions = config)} />
 
           <!-- Enabled option -->
           <div>

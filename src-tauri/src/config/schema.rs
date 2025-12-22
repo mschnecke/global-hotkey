@@ -187,7 +187,10 @@ pub enum PostActionTrigger {
     #[default]
     OnExit,
     /// Execute after a delay (milliseconds) from process start
-    AfterDelay { delay_ms: u64 },
+    AfterDelay {
+        #[serde(rename = "delayMs")]
+        delay_ms: u64,
+    },
 }
 
 /// Keystroke for simulation
@@ -207,7 +210,10 @@ pub enum PostActionType {
     /// Simulate a custom keystroke combination
     SimulateKeystroke { keystroke: Keystroke },
     /// Wait for a specified duration before next action
-    Delay { delay_ms: u64 },
+    Delay {
+        #[serde(rename = "delayMs")]
+        delay_ms: u64,
+    },
 }
 
 /// A single post-action
@@ -315,7 +321,7 @@ pub enum AudioFormat {
 pub enum AiInputSource {
     Clipboard,
     RecordAudio {
-        #[serde(default = "default_max_duration")]
+        #[serde(default = "default_max_duration", rename = "maxDurationMs")]
         max_duration_ms: u64,
         #[serde(default)]
         format: AudioFormat,
