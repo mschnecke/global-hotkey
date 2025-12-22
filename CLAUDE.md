@@ -1,12 +1,10 @@
 # CLAUDE.md
 
-**CRITICAL: Read `.claude/INSTRUCTIONS.md` immediately.**
-
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-Global Hotkey is a cross-platform application for launching programs via configurable keyboard shortcuts.
+Global Hotkey is a cross-platform application for launching programs and executing AI-assisted workflows via configurable keyboard shortcuts.
 
 ## Tech Stack
 
@@ -47,6 +45,8 @@ global-hotkey/
 │   └── stores/            # Svelte stores
 ├── src-tauri/             # Rust backend
 │   └── src/
+│       ├── ai/            # AI provider integration (Gemini)
+│       ├── audio/         # Audio recording & Opus encoding
 │       ├── config/        # Configuration management
 │       ├── hotkey/        # Global hotkey handling
 │       ├── process/       # Process spawning
@@ -58,7 +58,7 @@ global-hotkey/
 
 ## Development Status
 
-**Current Status**: Production-ready (v1.0.8)
+**Current Status**: Production-ready (v1.0.9)
 
 All core features are complete:
 
@@ -66,6 +66,9 @@ All core features are complete:
 - Program launching (GUI and hidden CLI mode)
 - PATH-based program resolution (enter `git`, `code`, etc. without full paths)
 - Post-actions: clipboard paste, keystroke simulation, and delay actions after process completion
+- AI integration with Gemini API (text and audio input)
+- Audio recording with Opus encoding
+- Custom AI roles with configurable system prompts
 - System tray integration with dynamic theme-aware icons
 - Configuration import/export with automatic backups
 - Cross-platform support (Windows 10/11, macOS 10.15+)

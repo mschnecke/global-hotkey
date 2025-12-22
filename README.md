@@ -1,21 +1,41 @@
 # Global Hotkey
 
-A cross-platform desktop application for launching programs via configurable global keyboard shortcuts. Built with Tauri 2, Svelte 5, and Rust.
+A cross-platform desktop application for launching programs and executing AI-assisted workflows via configurable global keyboard shortcuts. Built with Tauri 2, Svelte 5, and Rust.
 
 ## Features
+
+### Core Features
 
 - **Global Hotkeys**: Register system-wide keyboard shortcuts that work from any application
 - **Program Launcher**: Launch any executable with custom arguments and working directory
 - **PATH Support**: Enter program names directly (e.g., `git`, `code`) without full paths
-- **Post-Actions**: Execute actions after a triggered process completes:
-  - Paste clipboard content automatically
-  - Simulate custom keystrokes with modifiers
-  - Chain multiple actions with configurable delays
-- **System Tray**: Runs quietly in the background with quick access via tray menu
 - **Hidden Mode**: Launch CLI applications without visible terminal windows
+- **System Tray**: Runs quietly in the background with quick access via tray menu
 - **Import/Export**: Backup and restore your hotkey configurations
 - **Cross-Platform**: Supports Windows 10/11 and macOS 10.15+
 - **Auto-Start**: Optionally start with your system
+
+### AI Integration
+
+- **AI-Powered Hotkeys**: Trigger AI workflows with a single keystroke
+- **Voice Input**: Record audio and send to AI for transcription or processing
+- **Clipboard Processing**: Send clipboard content to AI with custom instructions
+- **Gemini Support**: Integrated with Google Gemini API (gemini-2.5-flash-lite default)
+- **Custom Roles**: Create reusable AI roles with custom system prompts
+- **Built-in Roles**:
+  - DE Transcribe - Transcribe German audio
+  - DE→EN Translate - Translate German to English
+  - Beautify Text - Improve formatting and clarity
+  - Format as AI Response - Structure as professional response
+
+### Post-Actions
+
+Execute automated workflows after a hotkey trigger:
+
+- **Paste Clipboard**: Simulate Ctrl+V (or Cmd+V on macOS)
+- **Simulate Keystroke**: Send custom key combinations with modifiers
+- **Delay**: Wait a specified time before the next action
+- **Trigger Modes**: OnExit (after process completes) or AfterDelay
 
 ## Installation
 
@@ -47,27 +67,32 @@ brew install --cask global-hotkey
 3. Click **Add Hotkey** to create a new shortcut:
    - Enter a name for the hotkey
    - Click the hotkey recorder and press your desired key combination
-   - Browse to select the program to launch, or enter a program name from your PATH
-   - Optionally set arguments, working directory, or hidden mode
-   - Configure **Post-Actions** to run after the process completes (e.g., paste clipboard)
+   - Choose action type: **Launch Program** or **Call AI**
+   - Configure action-specific settings
+   - Optionally configure **Post-Actions** for automation workflows
 4. Click **Save** - the hotkey is now active!
 
-### Post-Actions
+### AI Workflows
 
-Post-actions allow automation workflows where a hotkey triggers a program and then performs follow-up actions:
+To use AI features:
 
-1. **OnExit**: Wait for the process to exit successfully (exit code 0), then run actions
-2. **AfterDelay**: Run actions after a configurable delay from process launch
+1. Go to the **AI Settings** tab
+2. Add your Gemini API key and test the connection
+3. Create a hotkey with **Call AI** action type
+4. Select an AI role and input source (clipboard or audio recording)
+5. Optionally add post-actions (e.g., paste the AI response)
 
-Available action types:
+**Example: Voice-to-Clipboard**
 
-- **Paste Clipboard**: Simulate Ctrl+V (or Cmd+V on macOS)
-- **Simulate Keystroke**: Send custom key combinations with modifiers
-- **Delay**: Wait a specified time before the next action
+- Press hotkey → Start recording
+- Press hotkey again → Stop recording → AI transcribes → Result saved to clipboard
 
 ### Configuration Storage
 
-Configurations are stored at `~/.global-hotkey.json` (in your home directory) on all platforms.
+Configurations are stored in two locations:
+
+- **Settings**: `~/.global-hotkey-settings.json` (fixed location)
+- **Hotkeys & AI**: `~/.global-hotkey/config.json` (configurable in General Settings)
 
 ## Permissions
 
@@ -79,7 +104,7 @@ Global Hotkey requires **Accessibility** permissions to capture keyboard shortcu
 2. Click the lock icon to make changes
 3. Enable **Global Hotkey**
 
-The app will prompt you on first launch if permissions are not granted.
+For AI audio features, **Microphone** access is also required.
 
 ### Windows
 
@@ -93,7 +118,7 @@ No special permissions required for normal operation.
 - [Rust](https://rustup.rs/) 1.70+
 - Platform-specific dependencies:
   - **Windows**: Visual Studio Build Tools
-  - **macOS**: Xcode Command Line Tools
+  - **macOS**: Xcode Command Line Tools, Opus (`brew install opus`)
 
 ### Setup
 
@@ -150,11 +175,16 @@ global-hotkey/
 │   │   ├── HotkeyRecorder.svelte
 │   │   ├── FileBrowser.svelte
 │   │   ├── ConfirmDialog.svelte
-│   │   └── PostActionEditor.svelte
+│   │   ├── PostActionEditor.svelte
+│   │   ├── AiSettings.svelte
+│   │   ├── GeneralSettings.svelte
+│   │   └── RoleEditor.svelte
 │   ├── lib/                  # Utilities & types
 │   └── stores/               # Svelte stores
 ├── src-tauri/                # Rust backend
 │   └── src/
+│       ├── ai/               # AI provider integration
+│       ├── audio/            # Audio recording & encoding
 │       ├── config/           # Configuration management
 │       ├── hotkey/           # Global hotkey handling
 │       ├── process/          # Process spawning
@@ -162,14 +192,15 @@ global-hotkey/
 │       └── tray.rs           # System tray
 ├── packages/                 # Distribution packages
 │   ├── chocolatey/           # Windows package
-│   └── homebrew/             # macOS package
+│   └── macos/                # macOS package
 └── docs/                     # Documentation
 ```
 
 ## Documentation
 
 - [Product Requirements Document](docs/PRD.md)
-- [Post-Actions Feature Specification](docs/post-action-prd.md)
+- [Post-Actions Feature Specification](docs/PRD-post-actions.md)
+- [AI Module Specification](docs/PRD-ai-module.md)
 
 ## License
 
