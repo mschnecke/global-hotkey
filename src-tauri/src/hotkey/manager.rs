@@ -120,13 +120,30 @@ fn handle_event(event: GlobalHotKeyEvent) {
                         input_source,
                         provider_id,
                     } => {
-                        if let Err(e) =
-                            execute_ai_action(&config_id, &role_id, &input_source, &provider_id)
-                        {
-                            eprintln!(
-                                "Failed to execute AI action for hotkey '{}': {}",
-                                hotkey_name, e
-                            );
+                        match execute_ai_action(&config_id, &role_id, &input_source, &provider_id) {
+                            Ok(completed) => {
+                                // Only execute post-actions if action actually completed
+                                // (not just started recording)
+                                if completed
+                                    && post_actions.enabled
+                                    && !post_actions.actions.is_empty()
+                                {
+                                    if let Err(e) =
+                                        crate::postaction::execute_post_actions(&post_actions)
+                                    {
+                                        eprintln!(
+                                            "Failed to execute post-actions for hotkey '{}': {}",
+                                            hotkey_name, e
+                                        );
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!(
+                                    "Failed to execute AI action for hotkey '{}': {}",
+                                    hotkey_name, e
+                                );
+                            }
                         }
                     }
                 }
@@ -136,15 +153,22 @@ fn handle_event(event: GlobalHotKeyEvent) {
     }
 }
 
+/// Result of an AI action - indicates if it completed (true) or just started (false)
+type AiActionCompleted = bool;
+
 /// Execute an AI action
+/// Returns Ok(true) if the action completed, Ok(false) if it just started (e.g., recording)
 fn execute_ai_action(
     hotkey_id: &str,
     role_id: &str,
     input_source: &AiInputSource,
     _provider_id: &Option<String>,
-) -> Result<(), AppError> {
+) -> Result<AiActionCompleted, AppError> {
     match input_source {
-        AiInputSource::Clipboard => execute_clipboard_ai_action(role_id),
+        AiInputSource::Clipboard => {
+            execute_clipboard_ai_action(role_id)?;
+            Ok(true) // Completed
+        }
         AiInputSource::RecordAudio { .. } => execute_audio_ai_action(hotkey_id, role_id),
         AiInputSource::ProcessOutput => Err(AppError::Ai(
             "Process output not yet implemented".to_string(),
@@ -214,9 +238,9 @@ fn execute_clipboard_ai_action_inner(role_id: &str) -> Result<(), AppError> {
 }
 
 /// Execute AI action with audio recording (toggle behavior)
-/// First press: start recording
-/// Second press: stop recording, process with AI, save to clipboard
-fn execute_audio_ai_action(hotkey_id: &str, role_id: &str) -> Result<(), AppError> {
+/// First press: start recording (returns Ok(false))
+/// Second press: stop recording, process with AI, save to clipboard (returns Ok(true))
+fn execute_audio_ai_action(hotkey_id: &str, role_id: &str) -> Result<AiActionCompleted, AppError> {
     // Check if there's an active recording for this hotkey
     let has_active_recording = {
         let recordings = ACTIVE_RECORDINGS.read().unwrap();
@@ -249,7 +273,8 @@ fn execute_audio_ai_action(hotkey_id: &str, role_id: &str) -> Result<(), AppErro
                 }
             }
 
-            return result;
+            result?;
+            return Ok(true); // Action completed
         }
     } else {
         // Start recording - set icon to active
@@ -270,7 +295,7 @@ fn execute_audio_ai_action(hotkey_id: &str, role_id: &str) -> Result<(), AppErro
         }
     }
 
-    Ok(())
+    Ok(false) // Just started recording, not completed
 }
 
 /// Process recorded audio: encode, send to AI, save response
