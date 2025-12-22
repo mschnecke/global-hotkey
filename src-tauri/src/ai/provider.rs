@@ -6,7 +6,6 @@ use crate::error::AppError;
 #[derive(Debug, Clone)]
 pub struct AiResponse {
     pub text: String,
-    pub finish_reason: Option<String>,
 }
 
 /// Trait for AI providers

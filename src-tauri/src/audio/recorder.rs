@@ -2,7 +2,7 @@
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
@@ -132,13 +132,8 @@ impl AudioRecorderHandle {
                 return;
             }
 
-            // Wait for stop command
-            loop {
-                match command_rx.recv() {
-                    Ok(RecorderCommand::Stop) => break,
-                    Err(_) => break, // Channel closed
-                }
-            }
+            // Wait for stop command or channel close
+            let _ = command_rx.recv();
 
             // Stream is dropped here, stopping recording
             is_recording_clone.store(false, Ordering::SeqCst);

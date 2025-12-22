@@ -231,6 +231,7 @@ pub fn opus_mime_type() -> &'static str {
 }
 
 /// Get the MIME type for WAV audio
+#[allow(dead_code)]
 pub fn wav_mime_type() -> &'static str {
     "audio/wav"
 }

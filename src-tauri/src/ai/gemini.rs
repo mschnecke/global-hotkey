@@ -75,6 +75,7 @@ struct GeminiResponse {
 #[derive(Deserialize)]
 struct Candidate {
     content: CandidateContent,
+    #[allow(dead_code)]
     #[serde(rename = "finishReason")]
     finish_reason: Option<String>,
 }
@@ -116,7 +117,7 @@ impl AiProvider for GeminiProvider {
 
         let response = self
             .client
-            .post(&self.endpoint())
+            .post(self.endpoint())
             .json(&request)
             .send()
             .await
@@ -138,10 +139,7 @@ impl AiProvider for GeminiProvider {
             .and_then(|p| p.text)
             .unwrap_or_default();
 
-        Ok(AiResponse {
-            text,
-            finish_reason: None,
-        })
+        Ok(AiResponse { text })
     }
 
     async fn send_audio(
@@ -174,7 +172,7 @@ impl AiProvider for GeminiProvider {
 
         let response = self
             .client
-            .post(&self.endpoint())
+            .post(self.endpoint())
             .json(&request)
             .send()
             .await
@@ -196,10 +194,7 @@ impl AiProvider for GeminiProvider {
             .and_then(|p| p.text)
             .unwrap_or_default();
 
-        Ok(AiResponse {
-            text,
-            finish_reason: None,
-        })
+        Ok(AiResponse { text })
     }
 
     async fn test_connection(&self) -> Result<bool, AppError> {
