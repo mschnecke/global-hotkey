@@ -2,6 +2,8 @@
 //!
 //! This library provides the Tauri backend for the Global Hotkey application.
 
+mod ai;
+mod audio;
 mod config;
 mod error;
 mod hotkey;
@@ -9,23 +11,68 @@ mod postaction;
 mod process;
 mod tray;
 
-pub use config::schema::{AppConfig, AppSettings, HotkeyBinding, HotkeyConfig, ProgramConfig};
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
+// Global audio recorder state
+static AUDIO_RECORDER: Lazy<Mutex<Option<audio::AudioRecorderHandle>>> =
+    Lazy::new(|| Mutex::new(None));
+
+pub use config::schema::{
+    AppConfig, AppSettings, FullConfig, HotkeyAction, HotkeyBinding, HotkeyConfig, ProgramConfig,
+};
 pub use error::AppError;
 
 // ============================================================================
 // Tauri Commands - Configuration
 // ============================================================================
 
-/// Get the current application configuration
+/// Get the full configuration (settings + config)
+#[tauri::command]
+async fn get_full_config() -> Result<FullConfig, String> {
+    config::manager::load_full_config().map_err(|e| e.to_string())
+}
+
+/// Save the full configuration (settings + config)
+#[tauri::command]
+async fn save_full_config(full_config: FullConfig) -> Result<(), String> {
+    config::manager::save_full_config(&full_config).map_err(|e| e.to_string())
+}
+
+/// Get the current application configuration (hotkeys + AI)
 #[tauri::command]
 async fn get_config() -> Result<AppConfig, String> {
     config::manager::load_config().map_err(|e| e.to_string())
 }
 
-/// Save the application configuration
+/// Save the application configuration (hotkeys + AI)
 #[tauri::command]
 async fn save_config(config: AppConfig) -> Result<(), String> {
     config::manager::save_config(&config).map_err(|e| e.to_string())
+}
+
+/// Get the current application settings
+#[tauri::command]
+async fn get_settings() -> Result<AppSettings, String> {
+    config::manager::load_settings().map_err(|e| e.to_string())
+}
+
+/// Save the application settings
+#[tauri::command]
+async fn save_settings(settings: AppSettings) -> Result<(), String> {
+    config::manager::save_settings(&settings).map_err(|e| e.to_string())
+}
+
+/// Get the current config location path
+#[tauri::command]
+async fn get_config_location() -> Result<String, String> {
+    config::manager::get_config_location().map_err(|e| e.to_string())
+}
+
+/// Change the config location (copies existing config to new location)
+#[tauri::command]
+async fn change_config_location(new_path: Option<String>) -> Result<(), String> {
+    config::manager::change_config_location(new_path).map_err(|e| e.to_string())
 }
 
 /// Export configuration to a user-specified file
@@ -153,6 +200,155 @@ async fn set_autostart(app: tauri::AppHandle, enabled: bool) -> Result<(), Strin
 }
 
 // ============================================================================
+// Tauri Commands - AI Module
+// ============================================================================
+
+/// Test an AI provider connection
+#[tauri::command]
+async fn test_ai_provider(api_key: String, model: Option<String>) -> Result<bool, String> {
+    use ai::AiProvider;
+    let provider = ai::GeminiProvider::new(api_key, model);
+    provider.test_connection().await.map_err(|e| e.to_string())
+}
+
+/// Send text to AI and get response
+#[tauri::command]
+async fn send_to_ai(
+    api_key: String,
+    model: Option<String>,
+    system_prompt: String,
+    user_input: String,
+) -> Result<String, String> {
+    use ai::AiProvider;
+    let provider = ai::GeminiProvider::new(api_key, model);
+    let response = provider
+        .send_text(&system_prompt, &user_input)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(response.text)
+}
+
+/// Get built-in AI roles
+#[tauri::command]
+fn get_builtin_roles() -> Vec<config::schema::AiRole> {
+    ai::get_builtin_roles()
+}
+
+/// Save an AI role (create or update)
+#[tauri::command]
+async fn save_ai_role(role: config::schema::AiRole) -> Result<(), String> {
+    let mut app_config = config::manager::load_config().map_err(|e| e.to_string())?;
+
+    // Find existing role index
+    let existing_idx = app_config.ai.roles.iter().position(|r| r.id == role.id);
+
+    if let Some(idx) = existing_idx {
+        // Update existing role (only if not builtin)
+        if app_config.ai.roles[idx].is_builtin {
+            return Err("Cannot modify built-in roles".to_string());
+        }
+        app_config.ai.roles[idx] = role;
+    } else {
+        // Add new role
+        app_config.ai.roles.push(role);
+    }
+
+    config::manager::save_config(&app_config).map_err(|e| e.to_string())
+}
+
+/// Delete an AI role
+#[tauri::command]
+async fn delete_ai_role(role_id: String) -> Result<(), String> {
+    let mut app_config = config::manager::load_config().map_err(|e| e.to_string())?;
+
+    // Find the role
+    let role_idx = app_config.ai.roles.iter().position(|r| r.id == role_id);
+
+    if let Some(idx) = role_idx {
+        // Check if it's a built-in role
+        if app_config.ai.roles[idx].is_builtin {
+            return Err("Cannot delete built-in roles".to_string());
+        }
+        app_config.ai.roles.remove(idx);
+        config::manager::save_config(&app_config).map_err(|e| e.to_string())
+    } else {
+        Err("Role not found".to_string())
+    }
+}
+
+// ============================================================================
+// Tauri Commands - Audio Recording
+// ============================================================================
+
+/// Start audio recording
+#[tauri::command]
+async fn start_audio_recording() -> Result<(), String> {
+    let recorder = audio::AudioRecorderHandle::start().map_err(|e| e.to_string())?;
+
+    let mut guard = AUDIO_RECORDER
+        .lock()
+        .map_err(|e| format!("Failed to lock recorder: {}", e))?;
+    *guard = Some(recorder);
+
+    Ok(())
+}
+
+/// Stop audio recording and return WAV data as base64
+#[tauri::command]
+async fn stop_audio_recording() -> Result<String, String> {
+    let mut guard = AUDIO_RECORDER
+        .lock()
+        .map_err(|e| format!("Failed to lock recorder: {}", e))?;
+
+    let recorder = guard
+        .take()
+        .ok_or_else(|| "No active recording".to_string())?;
+
+    let (samples, sample_rate, channels) = recorder.stop().map_err(|e| e.to_string())?;
+
+    let wav_data =
+        audio::encode_to_wav(&samples, sample_rate, channels).map_err(|e| e.to_string())?;
+
+    // Return as base64 for easy transfer to frontend
+    use base64::Engine;
+    Ok(base64::engine::general_purpose::STANDARD.encode(&wav_data))
+}
+
+/// Check if currently recording
+#[tauri::command]
+async fn is_audio_recording() -> Result<bool, String> {
+    let guard = AUDIO_RECORDER
+        .lock()
+        .map_err(|e| format!("Failed to lock recorder: {}", e))?;
+
+    Ok(guard.as_ref().map(|r| r.is_recording()).unwrap_or(false))
+}
+
+/// Send audio to AI for transcription/processing
+#[tauri::command]
+async fn send_audio_to_ai(
+    api_key: String,
+    model: Option<String>,
+    system_prompt: String,
+    audio_base64: String,
+) -> Result<String, String> {
+    use ai::AiProvider;
+    use base64::Engine;
+
+    let audio_data = base64::engine::general_purpose::STANDARD
+        .decode(&audio_base64)
+        .map_err(|e| format!("Failed to decode audio: {}", e))?;
+
+    let provider = ai::GeminiProvider::new(api_key, model);
+    let response = provider
+        .send_audio(&system_prompt, &audio_data, "audio/wav")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(response.text)
+}
+
+// ============================================================================
 // Application Entry Point
 // ============================================================================
 
@@ -162,6 +358,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
@@ -174,6 +371,9 @@ pub fn run() {
             // Hide dock icon on macOS - this is a menu bar app
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            // Store app handle for global access (tray icon changes, notifications)
+            tray::set_app_handle(app.handle().clone());
 
             // Initialize configuration directory and files
             if let Err(e) = config::manager::init() {
@@ -219,8 +419,11 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Keep tray alive for the lifetime of the app
-            std::mem::forget(tray);
+            // Store tray icon reference for later updates
+            {
+                let mut tray_ref = tray::TRAY.write().unwrap();
+                *tray_ref = Some(tray);
+            }
 
             // Register saved hotkeys
             if let Some(cfg) = loaded_config {
@@ -242,8 +445,14 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             // Config commands
+            get_full_config,
+            save_full_config,
             get_config,
             save_config,
+            get_settings,
+            save_settings,
+            get_config_location,
+            change_config_location,
             export_config,
             import_config,
             // Hotkey commands
@@ -262,6 +471,17 @@ pub fn run() {
             is_dark_mode,
             get_autostart,
             set_autostart,
+            // AI commands
+            test_ai_provider,
+            send_to_ai,
+            get_builtin_roles,
+            save_ai_role,
+            delete_ai_role,
+            // Audio commands
+            start_audio_recording,
+            stop_audio_recording,
+            is_audio_recording,
+            send_audio_to_ai,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

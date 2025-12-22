@@ -170,7 +170,7 @@ pub fn launch_app_bundle(path: &Path, hidden: bool) -> std::io::Result<std::proc
 #[cfg(target_os = "macos")]
 #[allow(dead_code)]
 pub fn is_app_bundle(path: &Path) -> bool {
-    path.extension().map_or(false, |ext| ext == "app") && path.is_dir()
+    path.extension().is_some_and(|ext| ext == "app") && path.is_dir()
 }
 
 #[cfg(not(target_os = "macos"))]

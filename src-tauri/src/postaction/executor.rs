@@ -88,6 +88,28 @@ fn launch_and_wait(config: &ProgramConfig) -> Result<i32, AppError> {
     Ok(output.status.code().unwrap_or(-1))
 }
 
+/// Execute post-actions directly (for AI actions where the "process" is the AI call itself)
+pub fn execute_post_actions(post_actions: &PostActionsConfig) -> Result<(), AppError> {
+    if !post_actions.enabled || post_actions.actions.is_empty() {
+        return Ok(());
+    }
+
+    // For AI actions, we handle the trigger differently:
+    // - OnExit: Execute immediately (AI action already completed)
+    // - AfterDelay: Wait then execute
+    match &post_actions.trigger {
+        PostActionTrigger::OnExit => {
+            execute_actions(&post_actions.actions, "AI action")?;
+        }
+        PostActionTrigger::AfterDelay { delay_ms } => {
+            std::thread::sleep(std::time::Duration::from_millis(*delay_ms));
+            execute_actions(&post_actions.actions, "AI action")?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Execute a sequence of post-actions
 fn execute_actions(actions: &[PostAction], hotkey_name: &str) -> Result<(), AppError> {
     let mut simulator = InputSimulator::new()?;

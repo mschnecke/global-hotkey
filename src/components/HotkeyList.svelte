@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { HotkeyConfig } from '$lib/types';
+  import type { HotkeyConfig, HotkeyAction } from '$lib/types';
 
   interface Props {
     hotkeys: HotkeyConfig[];
@@ -22,6 +22,20 @@
     const separator = path.includes('\\') ? '\\' : '/';
     const parts = path.split(separator);
     return parts[parts.length - 1] || path;
+  }
+
+  function getActionDisplay(action: HotkeyAction): { label: string; sublabel?: string } {
+    if (action.type === 'launchProgram') {
+      return {
+        label: getFilename(action.program.path),
+        sublabel: action.program.hidden ? 'Hidden' : undefined,
+      };
+    } else {
+      return {
+        label: 'AI: ' + action.roleId,
+        sublabel: action.inputSource.type === 'clipboard' ? 'Clipboard' : 'Audio',
+      };
+    }
   }
 </script>
 
@@ -64,7 +78,7 @@
             scope="col"
             class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
           >
-            Program
+            Action
           </th>
           <th
             scope="col"
@@ -89,11 +103,12 @@
               </code>
             </td>
             <td class="max-w-xs truncate px-6 py-4">
-              <div class="text-sm text-gray-900" title={hotkey.program.path}>
-                {getFilename(hotkey.program.path)}
+              <div class="text-sm text-gray-900" title={getActionDisplay(hotkey.action).label}>
+                {getActionDisplay(hotkey.action).label}
               </div>
-              {#if hotkey.program.hidden}
-                <span class="text-xs text-gray-500">Hidden</span>
+              {#if getActionDisplay(hotkey.action).sublabel}
+                <span class="text-xs text-gray-500">{getActionDisplay(hotkey.action).sublabel}</span
+                >
               {/if}
             </td>
             <td class="whitespace-nowrap px-6 py-4">

@@ -3,15 +3,23 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use arboard::Clipboard;
 use global_hotkey::{
     hotkey::{Code, HotKey, Modifiers},
     GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState,
 };
 use once_cell::sync::Lazy;
 
-use crate::config::schema::{HotkeyBinding, HotkeyConfig};
+use crate::ai::{AiProvider, GeminiProvider};
+use crate::audio;
+use crate::config::schema::{AiInputSource, HotkeyAction, HotkeyBinding, HotkeyConfig};
 use crate::error::AppError;
 use crate::process;
+use crate::tray::{send_notification, set_icon_state, TrayIconState};
+
+/// Track active audio recordings by hotkey ID
+static ACTIVE_RECORDINGS: Lazy<RwLock<HashMap<String, audio::AudioRecorderHandle>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 /// Registry entry containing hotkey ID, HotKey object, and configuration
 type RegistryEntry = (u32, HotKey, HotkeyConfig);
@@ -74,39 +82,284 @@ fn handle_event(event: GlobalHotKeyEvent) {
     }
 
     let registry = REGISTRY.read().unwrap();
-    for (_, (hotkey_id, _, config)) in registry.iter() {
+    for (config_id, (hotkey_id, _, config)) in registry.iter() {
         if *hotkey_id == event.id {
-            let program_config = config.program.clone();
+            let action = config.action.clone();
             let post_actions = config.post_actions.clone();
             let hotkey_name = config.name.clone();
+            let config_id = config_id.clone();
 
             // Spawn in a separate thread to avoid blocking the event loop
             std::thread::spawn(move || {
-                // Check if post-actions are enabled
-                if post_actions.enabled && !post_actions.actions.is_empty() {
-                    if let Err(e) = crate::postaction::execute_with_post_actions(
-                        &program_config,
-                        &post_actions,
-                        &hotkey_name,
-                    ) {
-                        eprintln!(
-                            "Failed to execute hotkey '{}' with post-actions: {}",
-                            hotkey_name, e
-                        );
+                match action {
+                    HotkeyAction::LaunchProgram { program } => {
+                        // Check if post-actions are enabled
+                        if post_actions.enabled && !post_actions.actions.is_empty() {
+                            if let Err(e) = crate::postaction::execute_with_post_actions(
+                                &program,
+                                &post_actions,
+                                &hotkey_name,
+                            ) {
+                                eprintln!(
+                                    "Failed to execute hotkey '{}' with post-actions: {}",
+                                    hotkey_name, e
+                                );
+                            }
+                        } else {
+                            // No post-actions, just launch normally
+                            if let Err(e) = process::spawner::launch(&program) {
+                                eprintln!(
+                                    "Failed to launch program for hotkey '{}': {}",
+                                    hotkey_name, e
+                                );
+                            }
+                        }
                     }
-                } else {
-                    // No post-actions, just launch normally
-                    if let Err(e) = process::spawner::launch(&program_config) {
-                        eprintln!(
-                            "Failed to launch program for hotkey '{}': {}",
-                            hotkey_name, e
-                        );
+                    HotkeyAction::CallAi {
+                        role_id,
+                        input_source,
+                        provider_id,
+                    } => {
+                        match execute_ai_action(&config_id, &role_id, &input_source, &provider_id) {
+                            Ok(completed) => {
+                                // Only execute post-actions if action actually completed
+                                // (not just started recording)
+                                if completed
+                                    && post_actions.enabled
+                                    && !post_actions.actions.is_empty()
+                                {
+                                    if let Err(e) =
+                                        crate::postaction::execute_post_actions(&post_actions)
+                                    {
+                                        eprintln!(
+                                            "Failed to execute post-actions for hotkey '{}': {}",
+                                            hotkey_name, e
+                                        );
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!(
+                                    "Failed to execute AI action for hotkey '{}': {}",
+                                    hotkey_name, e
+                                );
+                            }
+                        }
                     }
                 }
             });
             break;
         }
     }
+}
+
+/// Result of an AI action - indicates if it completed (true) or just started (false)
+type AiActionCompleted = bool;
+
+/// Execute an AI action
+/// Returns Ok(true) if the action completed, Ok(false) if it just started (e.g., recording)
+fn execute_ai_action(
+    hotkey_id: &str,
+    role_id: &str,
+    input_source: &AiInputSource,
+    _provider_id: &Option<String>,
+) -> Result<AiActionCompleted, AppError> {
+    match input_source {
+        AiInputSource::Clipboard => {
+            execute_clipboard_ai_action(role_id)?;
+            Ok(true) // Completed
+        }
+        AiInputSource::RecordAudio { .. } => execute_audio_ai_action(hotkey_id, role_id),
+        AiInputSource::ProcessOutput => Err(AppError::Ai(
+            "Process output not yet implemented".to_string(),
+        )),
+    }
+}
+
+/// Execute AI action with clipboard input
+fn execute_clipboard_ai_action(role_id: &str) -> Result<(), AppError> {
+    // Set icon to active state
+    set_icon_state(TrayIconState::Active);
+
+    let result = execute_clipboard_ai_action_inner(role_id);
+
+    // Reset icon to normal state
+    set_icon_state(TrayIconState::Normal);
+
+    // Send notification on completion
+    match &result {
+        Ok(_) => {
+            send_notification("AI Complete", "Response saved to clipboard");
+        }
+        Err(e) => {
+            send_notification("AI Error", &e.to_string());
+        }
+    }
+
+    result
+}
+
+fn execute_clipboard_ai_action_inner(role_id: &str) -> Result<(), AppError> {
+    let config = crate::config::manager::load_config()?;
+    let ai_settings = &config.ai;
+
+    let provider = ai_settings
+        .providers
+        .first()
+        .ok_or_else(|| AppError::Ai("No AI provider configured".to_string()))?;
+
+    let builtin_roles = crate::ai::get_builtin_roles();
+    let role = ai_settings
+        .roles
+        .iter()
+        .find(|r| r.id == role_id)
+        .or_else(|| builtin_roles.iter().find(|r| r.id == role_id))
+        .ok_or_else(|| AppError::Ai(format!("Role not found: {}", role_id)))?;
+
+    let gemini = GeminiProvider::new(provider.api_key.clone(), provider.model.clone());
+
+    let rt = tokio::runtime::Runtime::new()
+        .map_err(|e| AppError::Ai(format!("Failed to create runtime: {}", e)))?;
+
+    let mut clipboard =
+        Clipboard::new().map_err(|e| AppError::Ai(format!("Clipboard error: {}", e)))?;
+    let text = clipboard
+        .get_text()
+        .map_err(|e| AppError::Ai(format!("Failed to read clipboard: {}", e)))?;
+
+    let response = rt.block_on(gemini.send_text(&role.system_prompt, &text))?;
+
+    clipboard
+        .set_text(&response.text)
+        .map_err(|e| AppError::Ai(format!("Failed to set clipboard: {}", e)))?;
+
+    eprintln!("AI action completed, response saved to clipboard");
+    Ok(())
+}
+
+/// Execute AI action with audio recording (toggle behavior)
+/// First press: start recording (returns Ok(false))
+/// Second press: stop recording, process with AI, save to clipboard (returns Ok(true))
+fn execute_audio_ai_action(hotkey_id: &str, role_id: &str) -> Result<AiActionCompleted, AppError> {
+    // Check if there's an active recording for this hotkey
+    let has_active_recording = {
+        let recordings = ACTIVE_RECORDINGS.read().unwrap();
+        recordings.contains_key(hotkey_id)
+    };
+
+    if has_active_recording {
+        // Stop recording and process
+        eprintln!("Stopping audio recording...");
+
+        let recorder = {
+            let mut recordings = ACTIVE_RECORDINGS.write().unwrap();
+            recordings.remove(hotkey_id)
+        };
+
+        if let Some(recorder) = recorder {
+            // Keep icon active during processing
+            let result = process_audio_recording(recorder, role_id);
+
+            // Reset icon to normal state
+            set_icon_state(TrayIconState::Normal);
+
+            // Send notification on completion
+            match &result {
+                Ok(_) => {
+                    send_notification("AI Complete", "Response saved to clipboard");
+                }
+                Err(e) => {
+                    send_notification("AI Error", &e.to_string());
+                }
+            }
+
+            result?;
+            return Ok(true); // Action completed
+        }
+    } else {
+        // Start recording - set icon to active
+        eprintln!("Starting audio recording...");
+        set_icon_state(TrayIconState::Active);
+
+        match audio::AudioRecorderHandle::start() {
+            Ok(recorder) => {
+                let mut recordings = ACTIVE_RECORDINGS.write().unwrap();
+                recordings.insert(hotkey_id.to_string(), recorder);
+                eprintln!("Recording started. Press hotkey again to stop and process.");
+            }
+            Err(e) => {
+                set_icon_state(TrayIconState::Normal);
+                send_notification("Recording Error", &e.to_string());
+                return Err(e);
+            }
+        }
+    }
+
+    Ok(false) // Just started recording, not completed
+}
+
+/// Process recorded audio: encode, send to AI, save response
+fn process_audio_recording(
+    recorder: audio::AudioRecorderHandle,
+    role_id: &str,
+) -> Result<(), AppError> {
+    let (samples, sample_rate, channels) = recorder.stop()?;
+
+    if samples.is_empty() {
+        return Err(AppError::Audio("No audio recorded".to_string()));
+    }
+
+    eprintln!("Recorded {} samples at {} Hz", samples.len(), sample_rate);
+
+    // Encode to Opus (default, ~10x smaller than WAV)
+    let (audio_data, mime_type) = match audio::encode_to_opus(&samples, sample_rate, channels) {
+        Ok(data) => {
+            eprintln!("Encoded to {} bytes Opus", data.len());
+            (data, audio::opus_mime_type())
+        }
+        Err(e) => {
+            // Fallback to WAV if Opus fails
+            eprintln!("Opus encoding failed, falling back to WAV: {}", e);
+            let wav_data = audio::encode_to_wav(&samples, sample_rate, channels)?;
+            eprintln!("Encoded to {} bytes WAV", wav_data.len());
+            (wav_data, "audio/wav")
+        }
+    };
+
+    // Load config and find role
+    let config = crate::config::manager::load_config()?;
+    let ai_settings = &config.ai;
+
+    let provider = ai_settings
+        .providers
+        .first()
+        .ok_or_else(|| AppError::Ai("No AI provider configured".to_string()))?;
+
+    let builtin_roles = crate::ai::get_builtin_roles();
+    let role = ai_settings
+        .roles
+        .iter()
+        .find(|r| r.id == role_id)
+        .or_else(|| builtin_roles.iter().find(|r| r.id == role_id))
+        .ok_or_else(|| AppError::Ai(format!("Role not found: {}", role_id)))?;
+
+    let gemini = GeminiProvider::new(provider.api_key.clone(), provider.model.clone());
+
+    let rt = tokio::runtime::Runtime::new()
+        .map_err(|e| AppError::Ai(format!("Failed to create runtime: {}", e)))?;
+
+    eprintln!("Sending audio to AI...");
+    let response = rt.block_on(gemini.send_audio(&role.system_prompt, &audio_data, mime_type))?;
+
+    // Save response to clipboard
+    let mut clipboard =
+        Clipboard::new().map_err(|e| AppError::Ai(format!("Clipboard error: {}", e)))?;
+    clipboard
+        .set_text(&response.text)
+        .map_err(|e| AppError::Ai(format!("Failed to set clipboard: {}", e)))?;
+
+    eprintln!("Audio AI action completed, response saved to clipboard");
+    Ok(())
 }
 
 /// Register a hotkey - must be called from the main thread
