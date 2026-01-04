@@ -151,7 +151,13 @@ impl AiProvider for GeminiProvider {
         let mut last_error = None;
 
         for attempt in 0..MAX_RETRIES {
-            let response = match self.client.post(self.endpoint()).json(&request).send().await {
+            let response = match self
+                .client
+                .post(self.endpoint())
+                .json(&request)
+                .send()
+                .await
+            {
                 Ok(resp) => resp,
                 Err(e) => {
                     last_error = Some(AppError::Ai(format!("Request failed: {}", e)));
@@ -169,10 +175,7 @@ impl AiProvider for GeminiProvider {
             let status = response.status();
 
             // Try to get response body for error checking
-            let response_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| String::from("{}"));
+            let response_text = response.text().await.unwrap_or_else(|_| String::from("{}"));
 
             // Check for retryable errors based on status code
             if Self::is_retryable_error(status, &response_text) {
@@ -241,7 +244,13 @@ impl AiProvider for GeminiProvider {
         let mut last_error = None;
 
         for attempt in 0..MAX_RETRIES {
-            let response = match self.client.post(self.endpoint()).json(&request).send().await {
+            let response = match self
+                .client
+                .post(self.endpoint())
+                .json(&request)
+                .send()
+                .await
+            {
                 Ok(resp) => resp,
                 Err(e) => {
                     last_error = Some(AppError::Ai(format!("Request failed: {}", e)));
@@ -259,10 +268,7 @@ impl AiProvider for GeminiProvider {
             let status = response.status();
 
             // Try to get response body for error checking
-            let response_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| String::from("{}"));
+            let response_text = response.text().await.unwrap_or_else(|_| String::from("{}"));
 
             // Check for retryable errors based on status code
             if Self::is_retryable_error(status, &response_text) {

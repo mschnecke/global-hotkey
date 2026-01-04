@@ -111,7 +111,8 @@ fn resample_for_opus(
 
     // Deinterleave samples into separate channel vectors
     let samples_per_channel = samples.len() / num_channels;
-    let mut channel_data: Vec<Vec<f32>> = vec![Vec::with_capacity(samples_per_channel); num_channels];
+    let mut channel_data: Vec<Vec<f32>> =
+        vec![Vec::with_capacity(samples_per_channel); num_channels];
 
     for (i, &sample) in samples.iter().enumerate() {
         let channel = i % num_channels;
