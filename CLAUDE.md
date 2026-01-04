@@ -58,7 +58,7 @@ global-hotkey/
 
 ## Development Status
 
-**Current Status**: Production-ready (v1.0.9)
+**Current Status**: Production-ready (v1.0.10)
 
 All core features are complete:
 
@@ -66,8 +66,8 @@ All core features are complete:
 - Program launching (GUI and hidden CLI mode)
 - PATH-based program resolution (enter `git`, `code`, etc. without full paths)
 - Post-actions: clipboard paste, keystroke simulation, and delay actions after process completion
-- AI integration with Gemini API (text and audio input)
-- Audio recording with Opus encoding
+- AI integration with Gemini API (text and audio input) with retry logic and exponential backoff
+- Audio recording with Opus encoding (high-quality sinc interpolation resampling)
 - Custom AI roles with configurable system prompts
 - System tray integration with dynamic theme-aware icons
 - Configuration import/export with automatic backups

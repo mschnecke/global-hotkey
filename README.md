@@ -18,9 +18,9 @@ A cross-platform desktop application for launching programs and executing AI-ass
 ### AI Integration
 
 - **AI-Powered Hotkeys**: Trigger AI workflows with a single keystroke
-- **Voice Input**: Record audio and send to AI for transcription or processing
+- **Voice Input**: Record audio with high-quality Opus encoding and send to AI for transcription or processing
 - **Clipboard Processing**: Send clipboard content to AI with custom instructions
-- **Gemini Support**: Integrated with Google Gemini API (gemini-2.5-flash-lite default)
+- **Gemini Support**: Integrated with Google Gemini API with automatic retry and exponential backoff
 - **Custom Roles**: Create reusable AI roles with custom system prompts
 - **Built-in Roles**:
   - DE Transcribe - Transcribe German audio
