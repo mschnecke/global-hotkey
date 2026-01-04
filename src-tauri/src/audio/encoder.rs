@@ -2,6 +2,9 @@
 
 use crate::error::AppError;
 use audiopus::{coder::Encoder, Application, Channels, SampleRate};
+use rubato::{
+    Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+};
 use std::io::Cursor;
 
 /// Encode PCM samples to Opus in Ogg container (default, ~10x smaller than WAV)
@@ -11,8 +14,8 @@ pub fn encode_to_opus(
     channels: u16,
 ) -> Result<Vec<u8>, AppError> {
     // Opus requires specific sample rates: 8000, 12000, 16000, 24000, 48000
-    // Resample if needed
-    let (resampled, target_rate) = resample_for_opus(samples, sample_rate);
+    // Resample if needed using high-quality sinc interpolation
+    let (resampled, target_rate) = resample_for_opus(samples, sample_rate, channels)?;
 
     // Convert f32 to i16
     let samples_i16: Vec<i16> = resampled
@@ -75,9 +78,14 @@ pub fn encode_to_opus(
     Ok(ogg_data)
 }
 
-/// Resample audio to a rate supported by Opus
-fn resample_for_opus(samples: &[f32], sample_rate: u32) -> (Vec<f32>, u32) {
+/// Resample audio to a rate supported by Opus using high-quality sinc interpolation
+fn resample_for_opus(
+    samples: &[f32],
+    sample_rate: u32,
+    channels: u16,
+) -> Result<(Vec<f32>, u32), AppError> {
     // Opus supported rates: 8000, 12000, 16000, 24000, 48000
+    // Prefer 48000 Hz for best quality
     let target_rate = match sample_rate {
         r if r <= 8000 => 8000,
         r if r <= 12000 => 12000,
@@ -87,31 +95,55 @@ fn resample_for_opus(samples: &[f32], sample_rate: u32) -> (Vec<f32>, u32) {
     };
 
     if sample_rate == target_rate {
-        return (samples.to_vec(), target_rate);
+        return Ok((samples.to_vec(), target_rate));
     }
 
-    // Simple linear resampling
-    let ratio = target_rate as f64 / sample_rate as f64;
-    let new_len = (samples.len() as f64 * ratio) as usize;
-    let mut resampled = Vec::with_capacity(new_len);
+    // High-quality sinc resampling parameters (matching github-gia)
+    let params = SincInterpolationParameters {
+        sinc_len: 256,
+        f_cutoff: 0.95,
+        interpolation: SincInterpolationType::Linear,
+        oversampling_factor: 256,
+        window: WindowFunction::BlackmanHarris2,
+    };
 
-    for i in 0..new_len {
-        let src_pos = i as f64 / ratio;
-        let src_idx = src_pos as usize;
-        let frac = src_pos - src_idx as f64;
+    let num_channels = channels as usize;
 
-        let sample = if src_idx + 1 < samples.len() {
-            samples[src_idx] * (1.0 - frac as f32) + samples[src_idx + 1] * frac as f32
-        } else if src_idx < samples.len() {
-            samples[src_idx]
-        } else {
-            0.0
-        };
+    // Deinterleave samples into separate channel vectors
+    let samples_per_channel = samples.len() / num_channels;
+    let mut channel_data: Vec<Vec<f32>> = vec![Vec::with_capacity(samples_per_channel); num_channels];
 
-        resampled.push(sample);
+    for (i, &sample) in samples.iter().enumerate() {
+        let channel = i % num_channels;
+        channel_data[channel].push(sample);
     }
 
-    (resampled, target_rate)
+    // Create resampler
+    let mut resampler = SincFixedIn::<f32>::new(
+        target_rate as f64 / sample_rate as f64,
+        2.0,
+        params,
+        channel_data[0].len(),
+        num_channels,
+    )
+    .map_err(|e| AppError::Audio(format!("Failed to create resampler: {}", e)))?;
+
+    // Resample
+    let resampled_channels = resampler
+        .process(&channel_data, None)
+        .map_err(|e| AppError::Audio(format!("Failed to resample audio: {}", e)))?;
+
+    // Interleave channels back together
+    let resampled_len = resampled_channels[0].len();
+    let mut output = Vec::with_capacity(resampled_len * num_channels);
+
+    for i in 0..resampled_len {
+        for channel in &resampled_channels {
+            output.push(channel[i]);
+        }
+    }
+
+    Ok((output, target_rate))
 }
 
 /// Wrap Opus frames in an Ogg container (each frame as a separate packet)

@@ -42,6 +42,7 @@ cpal = "0.15"           # Cross-platform audio I/O
 ogg = "0.9"             # Ogg container format
 audiopus = "0.2"        # Opus codec encoding
 hound = "3.5"           # WAV encoding (fallback)
+rubato = "0.16"         # High-quality audio resampling
 
 # Async runtime for post-action AI calls
 tokio = { version = "1", features = ["rt"] }

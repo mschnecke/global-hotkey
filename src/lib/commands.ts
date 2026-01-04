@@ -232,9 +232,20 @@ export async function startAudioRecording(): Promise<void> {
 }
 
 /**
- * Stop audio recording and get WAV data as base64
+ * Audio recording result with data and mime type
  */
-export async function stopAudioRecording(): Promise<string> {
+export interface AudioRecordingResult {
+  /** Base64-encoded audio data */
+  data: string;
+  /** MIME type (audio/ogg for Opus, audio/wav for fallback) */
+  mime_type: string;
+}
+
+/**
+ * Stop audio recording and get audio data as base64 with mime type
+ * Uses Opus encoding by default (with WAV fallback)
+ */
+export async function stopAudioRecording(): Promise<AudioRecordingResult> {
   return invoke('stop_audio_recording');
 }
 
@@ -252,7 +263,8 @@ export async function sendAudioToAi(
   apiKey: string,
   systemPrompt: string,
   audioBase64: string,
+  mimeType?: string,
   model?: string
 ): Promise<string> {
-  return invoke('send_audio_to_ai', { apiKey, model, systemPrompt, audioBase64 });
+  return invoke('send_audio_to_ai', { apiKey, model, systemPrompt, audioBase64, mimeType });
 }

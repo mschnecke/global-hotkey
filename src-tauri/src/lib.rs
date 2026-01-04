@@ -293,9 +293,19 @@ async fn start_audio_recording() -> Result<(), String> {
     Ok(())
 }
 
-/// Stop audio recording and return WAV data as base64
+/// Audio recording result with data and mime type
+#[derive(serde::Serialize)]
+struct AudioRecordingResult {
+    /// Base64-encoded audio data
+    data: String,
+    /// MIME type (audio/ogg for Opus, audio/wav for fallback)
+    mime_type: String,
+}
+
+/// Stop audio recording and return audio data as base64 with mime type
+/// Uses Opus encoding by default (with WAV fallback)
 #[tauri::command]
-async fn stop_audio_recording() -> Result<String, String> {
+async fn stop_audio_recording() -> Result<AudioRecordingResult, String> {
     let mut guard = AUDIO_RECORDER
         .lock()
         .map_err(|e| format!("Failed to lock recorder: {}", e))?;
@@ -306,12 +316,23 @@ async fn stop_audio_recording() -> Result<String, String> {
 
     let (samples, sample_rate, channels) = recorder.stop().map_err(|e| e.to_string())?;
 
-    let wav_data =
-        audio::encode_to_wav(&samples, sample_rate, channels).map_err(|e| e.to_string())?;
+    // Try Opus encoding first (smaller files), fall back to WAV
+    let (audio_data, mime_type) = match audio::encode_to_opus(&samples, sample_rate, channels) {
+        Ok(data) => (data, audio::opus_mime_type()),
+        Err(e) => {
+            eprintln!("Opus encoding failed, falling back to WAV: {}", e);
+            let wav_data =
+                audio::encode_to_wav(&samples, sample_rate, channels).map_err(|e| e.to_string())?;
+            (wav_data, "audio/wav")
+        }
+    };
 
     // Return as base64 for easy transfer to frontend
     use base64::Engine;
-    Ok(base64::engine::general_purpose::STANDARD.encode(&wav_data))
+    Ok(AudioRecordingResult {
+        data: base64::engine::general_purpose::STANDARD.encode(&audio_data),
+        mime_type: mime_type.to_string(),
+    })
 }
 
 /// Check if currently recording
@@ -331,6 +352,7 @@ async fn send_audio_to_ai(
     model: Option<String>,
     system_prompt: String,
     audio_base64: String,
+    mime_type: Option<String>,
 ) -> Result<String, String> {
     use ai::AiProvider;
     use base64::Engine;
@@ -339,9 +361,12 @@ async fn send_audio_to_ai(
         .decode(&audio_base64)
         .map_err(|e| format!("Failed to decode audio: {}", e))?;
 
+    // Default to audio/ogg (Opus) if not specified
+    let audio_mime_type = mime_type.unwrap_or_else(|| "audio/ogg".to_string());
+
     let provider = ai::GeminiProvider::new(api_key, model);
     let response = provider
-        .send_audio(&system_prompt, &audio_data, "audio/wav")
+        .send_audio(&system_prompt, &audio_data, &audio_mime_type)
         .await
         .map_err(|e| e.to_string())?;
 
